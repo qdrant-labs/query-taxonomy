@@ -10,7 +10,8 @@ requires-python = ">=3.11,<3.15"
 dependencies = [
     "edify (>=0.3.0,<0.4.0)",
     "pydantic (>=2.13.4,<3.0.0)",
-    "spacy[apple] (>=3.8.14,<4.0.0)"
+    "spacy (>=3.8.14,<4.0.0)",
+    "spacy[apple] (>=3.8.14,<4.0.0) ; sys_platform == 'darwin' and platform_machine == 'arm64'"
 ]
 
 [tool.poetry]
