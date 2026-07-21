@@ -2,14 +2,12 @@ from typing import Any
 
 from query_taxonomy.banks import BANKS
 from query_taxonomy.core import Engine, GeneralBank
-from query_taxonomy.corruption import CORRUPTION_BANKS
-from query_taxonomy.entities import ENTITY_BANKS, TemporalLikeBank
 from query_taxonomy.logical import LOGICAL_BANKS
 from query_taxonomy.markers import MARKER_BANKS
 from query_taxonomy.metrics import METRIC_BANKS
 from query_taxonomy.metrics.pos import (
     MorphologyBank,
-    PosProfileBank,
+    NaturalLanguageSignalBank,
     SyntacticDepthBank,
 )
 from query_taxonomy.taxonomy import FeatureGroup
@@ -29,12 +27,11 @@ BankTypes = type[Bank]
 # Must be defined before any `features` re-export: features.py imports this
 # dict from the package, so it has to exist by the time that module loads.
 FEATURE_BANKS = {
-    FeatureGroup.STRUCTURED_IDENTIFIERS: BANKS + ENTITY_BANKS,
+    FeatureGroup.STRUCTURED_IDENTIFIERS: BANKS,
     FeatureGroup.SENTENCE_MARKERS: MARKER_BANKS,
-    FeatureGroup.LOGICAL_STRUCTURES: LOGICAL_BANKS + (TemporalLikeBank,),
-    FeatureGroup.CORRUPTION: CORRUPTION_BANKS,
+    FeatureGroup.LOGICAL_STRUCTURES: LOGICAL_BANKS ,
     FeatureGroup.STATISTICAL_METRICS: METRIC_BANKS
-    + (PosProfileBank, MorphologyBank, SyntacticDepthBank),
+    + (NaturalLanguageSignalBank, MorphologyBank, SyntacticDepthBank),
 }
 
 __all__ = ["FEATURE_BANKS", "Bank", "BankTypes", "Engine"]

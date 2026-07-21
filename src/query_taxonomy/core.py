@@ -15,7 +15,6 @@ class Engine(StrEnum):
     selecting regex-only must never import torch or spaCy."""
 
     REGEX = "regex"
-    GLINER = "gliner_model"
     SPACY = "spacy_model"
 
 

@@ -1,5 +1,10 @@
-"""spaCy-engine stat banks: POS profile, morphology, syntactic depth.
-All three share ONE cached pipeline (tagger + parser + lemmatizer, ner
+"""spaCy-engine stat banks — three of the four router signals: NL-shape
+(closed_class_share), vocabulary-mismatch risk (inflected_share), and
+compositional structure (parse_depth, clause_count). One scalar per
+question the router asks; anything that doesn't answer one was pruned
+(the UD-17 histogram and its derived shares lived here once — recompute
+from the shared doc if a corpus study ever needs them).
+All banks share ONE cached pipeline (tagger + parser + lemmatizer, ner
 disabled) — the pinned model is part of the determinism pin (SPEC d14/d17).
 spaCy is a main dependency; the model needs a separate download
 (`poetry run python -m spacy download en_core_web_sm`)."""
@@ -17,20 +22,32 @@ if TYPE_CHECKING:
 
 SPACY_MODEL = "en_core_web_sm"
 
-UD_TAGS = (
-    "ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ", "NOUN", "NUM",
-    "PART", "PRON", "PROPN", "PUNCT", "SCONJ", "SYM", "VERB", "X",
-)
-OPEN_CLASS = frozenset({"ADJ", "ADV", "INTJ", "NOUN", "PROPN", "VERB"})
+# Universal Dependencies (UD) closed-class part-of-speech tags.
+# Closed-class categories contain a small, relatively fixed inventory of words.
 CLOSED_CLASS = frozenset(
-    {"ADP", "AUX", "CCONJ", "DET", "NUM", "PART", "PRON", "SCONJ"}
+    {
+        "ADP",    # Adposition: prepositions/postpositions expressing grammatical relations (e.g. "in", "to", "with").
+        "AUX",    # Auxiliary verb: grammatical verb marking tense, aspect, mood, voice, or polarity (e.g. "is", "have", "will").
+        "CCONJ",  # Coordinating conjunction: links elements of equal syntactic status (e.g. "and", "or", "but").
+        "DET",    # Determiner: specifies or limits a noun (e.g. "the", "this", "some", "each").
+        "NUM",    # Numeral: cardinal or other numeric expression functioning as a number (e.g. "three", "42").
+        "PART",   # Particle: function word not fitting other categories, often marking negation or infinitives (e.g. "not", "to").
+        "PRON",   # Pronoun: substitutes for a noun phrase or refers to discourse participants (e.g. "he", "they", "who").
+        "SCONJ",  # Subordinating conjunction: introduces a subordinate clause (e.g. "because", "if", "although").
+    }
 )
-# UD's content-agnostic residual: punctuation, symbols, unclassified. Split
-# from OPEN/CLOSED so open_class_share + closed_class_share + residual_share
-# is a consumer-checkable ≈1 invariant (SPEC d24).
-RESIDUAL_CLASS = frozenset({"PUNCT", "SYM", "X"})
+
+# Universal Dependencies relations headed by a clause.
 CLAUSAL_DEPS = frozenset(
-    {"ROOT", "ccomp", "xcomp", "advcl", "acl", "relcl", "csubj"}
+    {
+        "ROOT",   # Root of the sentence: the main predicate of the entire utterance.
+        "ccomp",  # Clausal complement: finite or non-finite clause functioning as an argument with its own subject.
+        "xcomp",  # Open clausal complement: argument clause whose subject is controlled by another argument.
+        "advcl",  # Adverbial clause modifier: subordinate clause expressing time, reason, condition, purpose, etc.
+        "acl",    # Clausal modifier of a noun: clause modifying a noun (e.g. participial or infinitival modifier).
+        "relcl",  # Relative clause modifier: clause modifying a noun through relativization.
+        "csubj",  # Clausal subject: clause functioning as the syntactic subject of a predicate.
+    }
 )
 
 
@@ -44,8 +61,7 @@ def _pipeline() -> "Language":
 
 @lru_cache(maxsize=4096)
 def _doc(text: str) -> "Doc":
-    """One parse per text, shared by every spaCy bank — mirrors the shared
-    GLiNER2 forward pass."""
+    """One parse per text, shared by every spaCy bank."""
     return _pipeline()(text)
 
 
@@ -70,57 +86,32 @@ class SpacyBank(StatBank["Language"], ABC):
         return builder
 
 
-class PosProfileBank(SpacyBank):
-    """UD-17 POS histogram + derived shares (SPEC decision 14).
-    closed_class_share is the canonical function-word measure; the
-    stopword-ratio bank is its dependency-free fallback."""
+class NaturalLanguageSignalBank(SpacyBank):
+    """How natural-language-shaped is the query? (SPEC decision 14)
+    closed_class_share = fraction of tokens whose UD POS is a closed class
+    (function words: the/of/to/is/when...). Keyword telegrams sit near 0.0
+    -> sparse is safe; proper sentences sit near 0.4-0.5 -> dense wins.
+    The stopword-ratio bank is its dependency-free REGEX fallback."""
 
     @property
     @override
     def name(self) -> StatisticalMetric:
-        return StatisticalMetric.POS_PROFILE
+        return StatisticalMetric.NATURAL_LANGUAGE_SIGNAL
 
     @override
     def compute(self, text: str) -> list[FeatureStat]:
         tokens = [token for token in _doc(text) if not token.is_space]
-        total = len(tokens)
-        counts = {tag: 0 for tag in UD_TAGS}
-        for token in tokens:
-            if token.pos_ in counts:
-                counts[token.pos_] += 1
-
-        def share(count: int) -> float:
-            return count / total if total else 0.0
-
-        stats = [
-            FeatureStat(f"pos_count_{tag.lower()}", float(count))
-            for tag, count in counts.items()
-        ]
-        stats.extend(
-            [
-                FeatureStat(
-                    "open_class_share",
-                    share(sum(counts[tag] for tag in OPEN_CLASS)),
-                ),
-                FeatureStat(
-                    "closed_class_share",
-                    share(sum(counts[tag] for tag in CLOSED_CLASS)),
-                ),
-                FeatureStat(
-                    "residual_share",
-                    share(sum(counts[tag] for tag in RESIDUAL_CLASS)),
-                ),
-                FeatureStat("noun_share", share(counts["NOUN"])),
-                FeatureStat("verb_presence", float(counts["VERB"] > 0)),
-                FeatureStat("propn_share", share(counts["PROPN"])),
-            ]
-        )
-        return stats
+        closed = sum(token.pos_ in CLOSED_CLASS for token in tokens)
+        share = closed / len(tokens) if tokens else 0.0
+        return [FeatureStat("closed_class_share", share)]
 
 
 class MorphologyBank(SpacyBank):
-    """Inflection profile: tokens whose lemma differs from their surface
-    form — the grammar-caused half of vocabulary mismatch (CSV row 7)."""
+    """Vocabulary-mismatch risk from inflection: share of alphabetic tokens
+    whose lemma differs from their surface form (running -> run) — the
+    grammar-caused half of vocabulary mismatch (CSV row 7). High share ->
+    embeddings abstract over morphology; zero -> exact-match BM25 is not
+    tripped up by conjugation."""
 
     @property
     @override
@@ -134,10 +125,7 @@ class MorphologyBank(SpacyBank):
             token.lemma_.lower() != token.text.lower() for token in words
         )
         share = inflected / len(words) if words else 0.0
-        return [
-            FeatureStat("inflected_count", float(inflected)),
-            FeatureStat("inflected_share", share),
-        ]
+        return [FeatureStat("inflected_share", share)]
 
 
 def _depth(token: "Token") -> int:
@@ -152,8 +140,11 @@ def _depth(token: "Token") -> int:
 
 class SyntacticDepthBank(SpacyBank):
     """Compositional structure: max dependency-tree depth and clause count
-    (CSV row 18). Deep structure = meaning a bag-of-words loses; flat
-    structure = keyword telegram."""
+    (CSV row 18). Deep structure = meaning a bag-of-words loses; multiple
+    clauses = multiple propositions, where rerank/decomposition matters.
+    Read JOINTLY with closed_class_share: the parser hallucinates structure
+    on non-sentences (a bare identifier telegram can out-depth a real
+    question), so depth is only meaningful when the query is NL-shaped."""
 
     @property
     @override

@@ -8,7 +8,9 @@ from query_taxonomy.taxonomy import StatisticalMetric
 
 
 class LengthBank(MetricBank):
-    """Query size: token and character counts."""
+    """How big is the query? Token and character counts — short telegrams
+    behave differently from long questions, and length normalizes every
+    share the other signals emit."""
 
     @property
     @override
@@ -38,9 +40,10 @@ STOPWORDS: frozenset[str] = frozenset(
 
 
 class StopwordRatioBank(MetricBank):
-    """Function-word share of the query — the REGEX fallback of the POS
-    profile's closed_class_share (SPEC decision 14). High ratio = natural
-    phrasing; near-zero = keyword telegram."""
+    """How natural-language-shaped is the query? — closed-list REGEX
+    fallback of natural_language_signal's closed_class_share (SPEC
+    decision 14). High ratio = natural phrasing -> dense-friendly;
+    near-zero = keyword telegram -> sparse-safe."""
 
     @property
     @override
@@ -56,7 +59,4 @@ class StopwordRatioBank(MetricBank):
         tokens = self.tokens(text)
         stopwords = sum(token.lower() in STOPWORDS for token in tokens)
         ratio = stopwords / len(tokens) if tokens else 0.0
-        return [
-            FeatureStat("stopword_count", float(stopwords)),
-            FeatureStat("stopword_ratio", ratio),
-        ]
+        return [FeatureStat("stopword_ratio", ratio)]

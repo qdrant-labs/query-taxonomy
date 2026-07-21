@@ -13,7 +13,6 @@ from query_taxonomy.core import Engine, StatBank
 from query_taxonomy.features import FeatureExtractor
 from query_taxonomy.metrics import LengthBank, StopwordRatioBank
 from query_taxonomy.taxonomy import (
-    CorruptionKind,
     FeatureGroup,
     LogicalStructure,
     SentenceMarker,
@@ -61,10 +60,6 @@ CASES: dict[StrEnum, tuple[list[str], list[str]]] = {
     LogicalStructure.TEMPORAL: (
         ["bitcoin price today", "released 3 days ago"],
         ["tomorrowland tickets", "nowhere fast"],
-    ),
-    CorruptionKind.ENCODING_ARTIFACT: (
-        ["how to fix â€™ encoding issue", "cafÃ© menu"],
-        ["cafe menu", "clean ascii question"],
     ),
     StructuralIdentifier.CVE: (
         ["CVE-2024-3094", "see CVE-2023-12345 advisory"],
@@ -463,10 +458,9 @@ def test_stopword_ratio_bank() -> None:
         stat.name: stat.value
         for stat in StopwordRatioBank().compute("the best of the best")
     }
-    assert stats["stopword_count"] == 3.0
-    assert stats["stopword_ratio"] == 0.6
+    assert stats == {"stopword_ratio": 0.6}
 
 
 def test_stopword_ratio_empty_text() -> None:
     stats = {stat.name: stat.value for stat in StopwordRatioBank().compute("")}
-    assert stats == {"stopword_count": 0.0, "stopword_ratio": 0.0}
+    assert stats == {"stopword_ratio": 0.0}

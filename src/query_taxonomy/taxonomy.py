@@ -233,7 +233,7 @@ class StructuralIdentifier(StrEnum):
     SERIAL_NUMBER = "serial_number"
     """Device serial numbers, 15-digit IMEI — e.g. 356938035643809"""
 
-    VIN_CONTAINER = "vin_container"
+    VIN_CONTAINER = "vin_container" 
     """VIN / container numbers — e.g. WVWZZZ1JZXW000001, MSKU1234567"""
 
     LICENSE_PLATE = "license_plate"
@@ -388,29 +388,46 @@ class StatisticalMetric(StrEnum):
     """
     Statistical Metrics group: named scalars per query. Method: ALGO
     (stat banks — no spans, no claim registry).
+
+    Four router signals, one metric each (+ one fallback). Every scalar
+    answers a question the Strategy Router cares about — correlated with
+    which retrieval strategy (dense / sparse / hybrid) wins. Scalars that
+    answered no such question (the UD-17 POS histogram, derived shares,
+    raw counts) were pruned. Signals are COORDINATES and acceptance
+    filters for dataset work — never label sources; labels come from
+    retrieval outcomes.
     """
 
     LENGTH = "length"
-    """Query size — length_words (regex `\\w+` tokenization), length_chars.
-    See Stat suffix convention in CONTEXT.md."""
+    """How big is the query? — length_words (regex `\\w+` tokenization),
+    length_chars. Short telegrams behave differently from long questions;
+    also the normalizer behind every share. See Stat suffix convention in
+    CONTEXT.md."""
 
     STOPWORD_RATIO = "stopword_ratio"
-    """Function-word share — stopword_count, stopword_ratio. The REGEX
-    fallback of the POS profile's closed_class_share (SPEC decision 14)."""
+    """How natural-language-shaped is the query? (closed-list fallback) —
+    stopword_ratio. The REGEX fallback of natural_language_signal's
+    closed_class_share (SPEC decision 14)."""
 
-    POS_PROFILE = "pos_profile"
-    """UD-17 part-of-speech histogram + derived shares (open/closed class,
-    noun, verb presence, PROPN) via the pinned spaCy tagger (SPEC decision
-    14). Needs the downloaded spaCy model."""
+    NATURAL_LANGUAGE_SIGNAL = "natural_language_signal"
+    """How natural-language-shaped is the query? — closed_class_share
+    (function-word fraction) via the pinned spaCy tagger (SPEC decision
+    14). Near 0.0 = keyword telegram -> sparse-safe; 0.4-0.5 = proper
+    sentence -> dense-friendly. Needs the downloaded spaCy model."""
 
     MORPHOLOGY = "morphology"
-    """Inflection profile via the pinned lemmatizer — inflected_count,
-    inflected_share (tokens whose lemma differs from their surface form).
-    The grammar-caused half of vocabulary mismatch."""
+    """How much vocabulary-mismatch risk from inflection? —
+    inflected_share (tokens whose lemma differs from their surface form)
+    via the pinned lemmatizer. High -> embeddings abstract over
+    morphology; zero -> exact-match BM25 is safe. The grammar-caused half
+    of vocabulary mismatch."""
 
     SYNTACTIC_DEPTH = "syntactic_depth"
-    """Compositional structure via the pinned parser — parse_depth,
-    clause_count. Deep structure = meaning sparse bag-of-words loses."""
+    """How much compositional structure would a bag-of-words lose? —
+    parse_depth, clause_count via the pinned parser. Deep/multi-clause ->
+    dense or decompose+rerank. Only meaningful jointly with
+    closed_class_share: the parser hallucinates structure on
+    non-sentences."""
 
 
 class SemanticFeature(StrEnum):
