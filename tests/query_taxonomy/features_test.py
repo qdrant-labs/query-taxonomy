@@ -1,7 +1,7 @@
 """Unit tests for the features.py machinery, isolated from the real bank
 inventories: fake banks with canned outputs pin claim resolution, group
 layering, profile math, and extractor validation. Real-bank integration is
-covered by features_summary_test.py / regex_bank_test.py.
+covered by reporting_test.py / regex_bank_test.py.
 """
 
 from enum import StrEnum
@@ -276,4 +276,5 @@ def test_extract_empty_corpus():
     )
     corpus = extractor.extract([])
     assert corpus.queries == []
-    assert corpus.summary() == "queries: 0 tagged: 0 (0.0%)"
+    assert corpus.span_profiles == {}
+    assert corpus.stat_profiles == {}

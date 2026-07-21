@@ -63,3 +63,28 @@ class TestSpacyBanks:
         }
         assert deep["nesting_depth"] > flat["nesting_depth"]
         assert deep["statement_count"] >= 2
+
+    def test_coordination_measures_widest_chain(self, pos_bank):
+        from query_taxonomy.metrics.pos import CoordinationBank
+
+        bank = CoordinationBank()
+        cities = {
+            s.name: s.value
+            for s in bank.compute("cheap flights to boston, paris and tokyo")
+        }
+        assert cities == {"widest_list_size": 3.0}
+
+        actions = {
+            s.name: s.value
+            for s in bank.compute("install docker and configure the network")
+        }
+        assert actions == {"widest_list_size": 2.0}
+
+    def test_coordination_zero_when_nothing_is_coordinated(self, pos_bank):
+        from query_taxonomy.metrics.pos import CoordinationBank
+
+        stats = {
+            s.name: s.value
+            for s in CoordinationBank().compute("quantum computing paper")
+        }
+        assert stats == {"widest_list_size": 0.0}

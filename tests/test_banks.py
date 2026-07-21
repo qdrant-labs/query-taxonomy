@@ -61,6 +61,14 @@ CASES: dict[StrEnum, tuple[list[str], list[str]]] = {
         ["bitcoin price today", "released 3 days ago"],
         ["tomorrowland tickets", "nowhere fast"],
     ),
+    LogicalStructure.CODE_FRAGMENT: (
+        ["why does x != y fail in python", "SELECT id FROM users slow query"],
+        ["cats and dogs", "select a good sofa from ikea"],
+    ),
+    LogicalStructure.MATH_EXPRESSION: (
+        ["solve x^2 + y^2 = 25", "what is 2+2"],
+        ["best laptops 2026", "flights for 3-4 days"],
+    ),
     StructuralIdentifier.CVE: (
         ["CVE-2024-3094", "see CVE-2023-12345 advisory"],
         ["CVE-24-1", "cve"],
