@@ -35,3 +35,6 @@ Level of Corruption,,,Parent,,,
 "Statistical Metrics ",,,Parent,,,
 Semantical,,,Parent,,,
 Logical Structures,,,Parent,,,
+Code Fragment,No,"x != y, SELECT id FROM users",Lexogram,REGEX,Logical Structures,"Symbolic operators are not attested search dialect — in a real query they are evidence of embedded code; exact symbols matter, strong sparse signal (SPEC d20)"
+Math Expression,No,"E = mc^2, 2+2",Lexogram,REGEX,Logical Structures,"Equation grammar embedded in the query — formal content where exact symbols matter; claims evidence runs, never bare operators (SPEC d20)"
+Coordination,No,"boston, paris and tokyo",Lexogram,MODEL,Statistical Metrics,"Breadth: how many equal parts a query strings together — wide-but-flat enumeration is structure nesting depth cannot see; separately quotable strata (SPEC d20)"
