@@ -1,9 +1,10 @@
-"""spaCy-engine stat banks — three of the four router signals: NL-shape
+"""spaCy-engine stat banks — four of the five router signals: NL-shape
 (natural_language_share), vocabulary-mismatch risk (word_variation_share),
-and compositional structure (nesting_depth, statement_count). One scalar
-per question the router asks; anything that doesn't answer one was pruned
-(the UD-17 histogram and its derived shares lived here once — recompute
-from the shared doc if a corpus study ever needs them).
+compositional structure (nesting_depth, statement_count), and coordination
+breadth (widest_list_size, SPEC d20/d26 amendment). One
+scalar per question the router asks; anything that doesn't answer one was
+pruned (the UD-17 histogram and its derived shares lived here once —
+recompute from the shared doc if a corpus study ever needs them).
 All banks share ONE cached pipeline (tagger + parser + lemmatizer, ner
 disabled) — the pinned model is part of the determinism pin (SPEC d14/d17).
 spaCy is a main dependency; the model needs a separate download
@@ -14,7 +15,11 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, override
 
 from query_taxonomy.core import Engine, FeatureGroup, FeatureStat, StatBank
-from query_taxonomy.metrics.config import CLAUSAL_DEPS, CLOSED_CLASS, DEFAULT_SPACY_MODEL
+from query_taxonomy.metrics.config import (
+    CLAUSAL_DEPS,
+    CLOSED_CLASS,
+    DEFAULT_SPACY_MODEL,
+)
 from query_taxonomy.taxonomy import StatisticalMetric
 
 if TYPE_CHECKING:
@@ -139,4 +144,37 @@ class SyntacticDepthBank(SpacyBank):
         return [
             FeatureStat("nesting_depth", float(depth)),
             FeatureStat("statement_count", float(clauses)),
+        ]
+
+
+class CoordinationBank(SpacyBank):
+    """Coordination breadth — the fifth signal (SPEC d20, d26 amendment):
+    widest_list_size = how many equal parts the longest and/or/comma chain
+    strings together. "boston, paris and tokyo" -> 3; "install docker and
+    configure the network" -> 2; no coordination at all -> 0 (not 1).
+    Breadth is orthogonal to SyntacticDepthBank's nesting: enumerations
+    are wide but flat. Mechanism: conj-arc chains in the pinned parse —
+    read jointly with natural_language_share, like nesting_depth."""
+
+    @property
+    @override
+    def name(self) -> StatisticalMetric:
+        return StatisticalMetric.COORDINATION
+
+    @override
+    def compute(self, text: str) -> list[FeatureStat]:
+        widths: dict[int, int] = {}
+        for token in _doc(text):
+            if token.dep_ != "conj":
+                continue
+            root = token
+            # spaCy links each conjunct to the PREVIOUS one, so walk the
+            # conj arcs up to the chain root before counting width
+            while root.dep_ == "conj":
+                root = root.head
+            widths[root.i] = widths.get(root.i, 1) + 1
+        return [
+            FeatureStat(
+                "widest_list_size", float(max(widths.values(), default=0))
+            )
         ]

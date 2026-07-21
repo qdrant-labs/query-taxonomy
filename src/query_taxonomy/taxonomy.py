@@ -429,6 +429,14 @@ class StatisticalMetric(StrEnum):
     with natural_language_share: the parser hallucinates structure on
     non-sentences."""
 
+    COORDINATION = "coordination"
+    """How many equal parts does the longest and/or/comma chain string
+    together? — widest_list_size. "boston, paris and tokyo" is wide (3)
+    but flat — breadth the nesting_depth axis cannot see (SPEC d20;
+    admitted as the fifth signal by the d26 amendment, pruned to one
+    scalar per its doctrine). Parser output: read jointly with
+    natural_language_share, like nesting_depth."""
+
 
 class SemanticFeature(StrEnum):
     """
