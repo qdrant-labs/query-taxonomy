@@ -5,9 +5,8 @@ from functools import cached_property
 from pydantic import BaseModel, ConfigDict, computed_field
 
 from query_taxonomy import FEATURE_BANKS, Bank, BankTypes
-from query_taxonomy.banks import domain_by_type
 from query_taxonomy.core import Engine, FeatureSpan, FeatureStat
-from query_taxonomy.taxonomy import Domain, FeatureGroup
+from query_taxonomy.taxonomy import FeatureGroup
 
 
 def normalized_idf(df: int, n_docs: int) -> float:
@@ -106,79 +105,6 @@ class CorpusFeatures(BaseModel):
     """Per group, per type: doc-keyed stat values with corpus aggregates."""
     queries: list[QueryFeatures]
     """One entry per input query, in input order."""
-
-    def summary(self) -> str:
-        """Group-sectioned feature report. Tagged = at least one span in any
-        group; stats never tag a query. Inside structured_identifiers the
-        per-domain view doubles as the FP smell-test: hits from an off-topic
-        domain (finance types on a QA corpus) are a priori suspect."""
-        tagged_total = sum(1 for query in self.queries if query.spans)
-        total = len(self.queries)
-        share = 100 * tagged_total / total if total else 0.0
-        lines = [f"queries: {total} tagged: {tagged_total} ({share:.1f}%)"]
-
-        def tagged(profiles: Iterable[SpanProfile]) -> int:
-            return len({
-                doc_id for profile in profiles for doc_id in profile.spans
-            })
-
-        def type_lines(profiles: list[SpanProfile]) -> list[str]:
-            pad = max((len(profile.type) for profile in profiles), default=0)
-            out: list[str] = []
-            for profile in sorted(profiles, key=lambda p: -len(p.spans)):
-                matches = sum(len(spans) for spans in profile.spans.values())
-                out.append(
-                    f"{profile.type:<{pad}}  queries={len(profile.spans):3d} "
-                    f"matches={matches:3d} diversity={profile.diversity:3d}"
-                )
-                top = sorted(profile.dfs.items(), key=lambda item: -item[1])[:3]
-                forms = ", ".join(f"{text} ({df})" for text, df in top)
-                out.append(f"{'':<{pad}}  top: {forms}")
-            return out
-
-        for group, by_type in sorted(
-            self.span_profiles.items(),
-            key=lambda item: -tagged(item[1].values()),
-        ):
-            profiles = list(by_type.values())
-            lines.append("")
-            lines.append(
-                f"== {group.value} "
-                f"({len(profiles)} types, {tagged(profiles)} tagged)"
-            )
-            if group is FeatureGroup.STRUCTURED_IDENTIFIERS:
-                # model entity banks share the group but carry no Domain —
-                # they get their own subsection instead of a KeyError
-                by_domain: dict[Domain | None, list[SpanProfile]] = {}
-                for profile in profiles:
-                    domain = domain_by_type().get(profile.type)
-                    by_domain.setdefault(domain, []).append(profile)
-                for domain, docs in sorted(
-                    by_domain.items(), key=lambda item: -tagged(item[1])
-                ):
-                    label = domain.value if domain else "entities (model)"
-                    lines.append(
-                        f"-- {label} ({len(docs)} types, "
-                        f"{tagged(docs)} tagged)"
-                    )
-                    lines.extend(type_lines(docs))
-            else:
-                lines.extend(type_lines(profiles))
-
-        for group, by_type in sorted(self.stat_profiles.items()):
-            lines.append("")
-            lines.append(f"== {group.value} ({len(by_type)} types)")
-            for profile in sorted(by_type.values(), key=lambda p: p.type):
-                for name, agg in sorted(profile.aggregates.items()):
-                    lines.append(
-                        f"{profile.type}.{name}  docs={agg['count']:.0f} "
-                        f"mean={agg['mean']:.3f} min={agg['min']:.3f} "
-                        f"max={agg['max']:.3f}"
-                    )
-        return "\n".join(lines)
-
-    def __str__(self) -> str:
-        return self.summary()
 
 class FeatureExtractor:
     """
