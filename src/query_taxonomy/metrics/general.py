@@ -41,7 +41,7 @@ STOPWORDS: frozenset[str] = frozenset(
 
 class StopwordRatioBank(MetricBank):
     """How natural-language-shaped is the query? — closed-list REGEX
-    fallback of natural_language_signal's closed_class_share (SPEC
+    fallback of natural_language_signal's natural_language_share (SPEC
     decision 14). High ratio = natural phrasing -> dense-friendly;
     near-zero = keyword telegram -> sparse-safe."""
 

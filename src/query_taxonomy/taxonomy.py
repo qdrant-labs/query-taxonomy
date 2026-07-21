@@ -407,26 +407,26 @@ class StatisticalMetric(StrEnum):
     STOPWORD_RATIO = "stopword_ratio"
     """How natural-language-shaped is the query? (closed-list fallback) —
     stopword_ratio. The REGEX fallback of natural_language_signal's
-    closed_class_share (SPEC decision 14)."""
+    natural_language_share (SPEC decision 14)."""
 
     NATURAL_LANGUAGE_SIGNAL = "natural_language_signal"
-    """How natural-language-shaped is the query? — closed_class_share
+    """How natural-language-shaped is the query? — natural_language_share
     (function-word fraction) via the pinned spaCy tagger (SPEC decision
     14). Near 0.0 = keyword telegram -> sparse-safe; 0.4-0.5 = proper
     sentence -> dense-friendly. Needs the downloaded spaCy model."""
 
     MORPHOLOGY = "morphology"
-    """How much vocabulary-mismatch risk from inflection? —
-    inflected_share (tokens whose lemma differs from their surface form)
-    via the pinned lemmatizer. High -> embeddings abstract over
-    morphology; zero -> exact-match BM25 is safe. The grammar-caused half
-    of vocabulary mismatch."""
+    """How much vocabulary-mismatch risk from grammar? —
+    word_variation_share (tokens not in their dictionary form, running ->
+    run) via the pinned lemmatizer. High -> embeddings abstract over word
+    forms; zero -> exact-match BM25 is safe. The grammar-caused half of
+    vocabulary mismatch."""
 
     SYNTACTIC_DEPTH = "syntactic_depth"
     """How much compositional structure would a bag-of-words lose? —
-    parse_depth, clause_count via the pinned parser. Deep/multi-clause ->
-    dense or decompose+rerank. Only meaningful jointly with
-    closed_class_share: the parser hallucinates structure on
+    nesting_depth, statement_count via the pinned parser. Deeply nested /
+    multi-statement -> dense or decompose+rerank. Only meaningful jointly
+    with natural_language_share: the parser hallucinates structure on
     non-sentences."""
 
 

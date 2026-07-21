@@ -1,7 +1,7 @@
 """spaCy-engine stat banks — three of the four router signals: NL-shape
-(closed_class_share), vocabulary-mismatch risk (inflected_share), and
-compositional structure (parse_depth, clause_count). One scalar per
-question the router asks; anything that doesn't answer one was pruned
+(natural_language_share), vocabulary-mismatch risk (word_variation_share),
+and compositional structure (nesting_depth, statement_count). One scalar
+per question the router asks; anything that doesn't answer one was pruned
 (the UD-17 histogram and its derived shares lived here once — recompute
 from the shared doc if a corpus study ever needs them).
 All banks share ONE cached pipeline (tagger + parser + lemmatizer, ner
@@ -14,49 +14,19 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, override
 
 from query_taxonomy.core import Engine, FeatureGroup, FeatureStat, StatBank
+from query_taxonomy.metrics.config import CLAUSAL_DEPS, CLOSED_CLASS, DEFAULT_SPACY_MODEL
 from query_taxonomy.taxonomy import StatisticalMetric
 
 if TYPE_CHECKING:
     from spacy.language import Language
     from spacy.tokens import Doc, Token
 
-SPACY_MODEL = "en_core_web_sm"
-
-# Universal Dependencies (UD) closed-class part-of-speech tags.
-# Closed-class categories contain a small, relatively fixed inventory of words.
-CLOSED_CLASS = frozenset(
-    {
-        "ADP",    # Adposition: prepositions/postpositions expressing grammatical relations (e.g. "in", "to", "with").
-        "AUX",    # Auxiliary verb: grammatical verb marking tense, aspect, mood, voice, or polarity (e.g. "is", "have", "will").
-        "CCONJ",  # Coordinating conjunction: links elements of equal syntactic status (e.g. "and", "or", "but").
-        "DET",    # Determiner: specifies or limits a noun (e.g. "the", "this", "some", "each").
-        "NUM",    # Numeral: cardinal or other numeric expression functioning as a number (e.g. "three", "42").
-        "PART",   # Particle: function word not fitting other categories, often marking negation or infinitives (e.g. "not", "to").
-        "PRON",   # Pronoun: substitutes for a noun phrase or refers to discourse participants (e.g. "he", "they", "who").
-        "SCONJ",  # Subordinating conjunction: introduces a subordinate clause (e.g. "because", "if", "although").
-    }
-)
-
-# Universal Dependencies relations headed by a clause.
-CLAUSAL_DEPS = frozenset(
-    {
-        "ROOT",   # Root of the sentence: the main predicate of the entire utterance.
-        "ccomp",  # Clausal complement: finite or non-finite clause functioning as an argument with its own subject.
-        "xcomp",  # Open clausal complement: argument clause whose subject is controlled by another argument.
-        "advcl",  # Adverbial clause modifier: subordinate clause expressing time, reason, condition, purpose, etc.
-        "acl",    # Clausal modifier of a noun: clause modifying a noun (e.g. participial or infinitival modifier).
-        "relcl",  # Relative clause modifier: clause modifying a noun through relativization.
-        "csubj",  # Clausal subject: clause functioning as the syntactic subject of a predicate.
-    }
-)
-
-
 @lru_cache(maxsize=1)
-def _pipeline() -> "Language":
+def _pipeline(language: str = DEFAULT_SPACY_MODEL) -> "Language":
     # lazy: keeps regex-only extractor construction import-light
     import spacy
 
-    return spacy.load(SPACY_MODEL, disable=["ner"])
+    return spacy.load(language, disable=["ner"])
 
 
 @lru_cache(maxsize=4096)
@@ -88,10 +58,14 @@ class SpacyBank(StatBank["Language"], ABC):
 
 class NaturalLanguageSignalBank(SpacyBank):
     """How natural-language-shaped is the query? (SPEC decision 14)
-    closed_class_share = fraction of tokens whose UD POS is a closed class
-    (function words: the/of/to/is/when...). Keyword telegrams sit near 0.0
-    -> sparse is safe; proper sentences sit near 0.4-0.5 -> dense wins.
+    natural_language_share = fraction of tokens that are function words
+    (UD closed-class POS: the/of/to/is/when...). Keyword telegrams sit near
+    0.0 -> sparse is safe; proper sentences sit near 0.4-0.5 -> dense wins.
     The stopword-ratio bank is its dependency-free REGEX fallback."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._closed_classes = CLOSED_CLASS
 
     @property
     @override
@@ -101,17 +75,17 @@ class NaturalLanguageSignalBank(SpacyBank):
     @override
     def compute(self, text: str) -> list[FeatureStat]:
         tokens = [token for token in _doc(text) if not token.is_space]
-        closed = sum(token.pos_ in CLOSED_CLASS for token in tokens)
+        closed = sum(token.pos_ in self._closed_classes for token in tokens)
         share = closed / len(tokens) if tokens else 0.0
-        return [FeatureStat("closed_class_share", share)]
+        return [FeatureStat("natural_language_share", share)]
 
 
 class MorphologyBank(SpacyBank):
-    """Vocabulary-mismatch risk from inflection: share of alphabetic tokens
-    whose lemma differs from their surface form (running -> run) — the
-    grammar-caused half of vocabulary mismatch (CSV row 7). High share ->
-    embeddings abstract over morphology; zero -> exact-match BM25 is not
-    tripped up by conjugation."""
+    """Vocabulary-mismatch risk from grammar: word_variation_share = share
+    of alphabetic tokens not in their dictionary form (running -> run) —
+    the grammar-caused half of vocabulary mismatch (CSV row 7). High share
+    -> embeddings abstract over word forms; zero -> exact-match BM25 is
+    not tripped up by conjugation."""
 
     @property
     @override
@@ -125,7 +99,7 @@ class MorphologyBank(SpacyBank):
             token.lemma_.lower() != token.text.lower() for token in words
         )
         share = inflected / len(words) if words else 0.0
-        return [FeatureStat("inflected_share", share)]
+        return [FeatureStat("word_variation_share", share)]
 
 
 def _depth(token: "Token") -> int:
@@ -139,12 +113,18 @@ def _depth(token: "Token") -> int:
 
 
 class SyntacticDepthBank(SpacyBank):
-    """Compositional structure: max dependency-tree depth and clause count
-    (CSV row 18). Deep structure = meaning a bag-of-words loses; multiple
-    clauses = multiple propositions, where rerank/decomposition matters.
-    Read JOINTLY with closed_class_share: the parser hallucinates structure
-    on non-sentences (a bare identifier telegram can out-depth a real
-    question), so depth is only meaningful when the query is NL-shaped."""
+    """Compositional structure: nesting_depth = how deeply sentence parts
+    nest (max dependency-tree depth), statement_count = how many things the
+    query asserts/asks (clause-headed relations, CSV row 18). Deep nesting
+    = meaning a bag-of-words loses; multiple statements = rerank or
+    decomposition matters. Read JOINTLY with natural_language_share: the
+    parser hallucinates structure on non-sentences (a bare identifier
+    telegram can out-depth a real question), so nesting_depth is only
+    meaningful when the query is NL-shaped."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._clausal_deps = CLAUSAL_DEPS
 
     @property
     @override
@@ -155,8 +135,8 @@ class SyntacticDepthBank(SpacyBank):
     def compute(self, text: str) -> list[FeatureStat]:
         tokens = [token for token in _doc(text) if not token.is_space]
         depth = max((_depth(token) for token in tokens), default=0)
-        clauses = sum(token.dep_ in CLAUSAL_DEPS for token in tokens)
+        clauses = sum(token.dep_ in self._clausal_deps for token in tokens)
         return [
-            FeatureStat("parse_depth", float(depth)),
-            FeatureStat("clause_count", float(clauses)),
+            FeatureStat("nesting_depth", float(depth)),
+            FeatureStat("statement_count", float(clauses)),
         ]
