@@ -372,6 +372,22 @@ class LogicalStructure(StrEnum):
     `-Like` suffix makes that visible at the emit boundary. Layered with
     TEMPORAL — the regex layer claims first."""
 
+    CODE_FRAGMENT = "code_fragment"
+    """Embedded programming-language grammar — e.g. "why x != y in python",
+    "SELECT id FROM users slow". Symbolic operators are not attested search
+    dialect, so in a real query they are evidence of embedded code (SPEC
+    d20). Claimed by evidence tokens only (compound operators, `name(` call
+    syntax, SELECT gated on FROM); full-fragment segmentation is out of
+    scope by design."""
+
+    MATH_EXPRESSION = "math_expression"
+    """Embedded equation grammar — e.g. "solve x^2 + y^2 = 25", "2+2".
+    Claims operand-operator-operand runs and `=` flanked by expressions;
+    bare single-char =/+/-/</> are never claimed (SPEC d20). Bare chemical
+    formulas (H2SO4) deliberately excluded: letter-digit shapes collide
+    with SKUs/tickers, and chemistry already has ChemicalIdBank — grammars
+    live in this group, token formats in identifiers."""
+
 
 class CorruptionKind(StrEnum):
     """
@@ -389,7 +405,7 @@ class StatisticalMetric(StrEnum):
     Statistical Metrics group: named scalars per query. Method: ALGO
     (stat banks — no spans, no claim registry).
 
-    Four router signals, one metric each (+ one fallback). Every scalar
+    Five router signals, one metric each (+ one fallback). Every scalar
     answers a question the Strategy Router cares about — correlated with
     which retrieval strategy (dense / sparse / hybrid) wins. Scalars that
     answered no such question (the UD-17 POS histogram, derived shares,

@@ -6,6 +6,7 @@ from query_taxonomy.logical import LOGICAL_BANKS
 from query_taxonomy.markers import MARKER_BANKS
 from query_taxonomy.metrics import METRIC_BANKS
 from query_taxonomy.metrics.pos import (
+    CoordinationBank,
     MorphologyBank,
     NaturalLanguageSignalBank,
     SyntacticDepthBank,
@@ -31,7 +32,12 @@ FEATURE_BANKS = {
     FeatureGroup.SENTENCE_MARKERS: MARKER_BANKS,
     FeatureGroup.LOGICAL_STRUCTURES: LOGICAL_BANKS ,
     FeatureGroup.STATISTICAL_METRICS: METRIC_BANKS
-    + (NaturalLanguageSignalBank, MorphologyBank, SyntacticDepthBank),
+    + (
+        NaturalLanguageSignalBank,
+        MorphologyBank,
+        SyntacticDepthBank,
+        CoordinationBank,
+    ),
 }
 
 __all__ = ["FEATURE_BANKS", "Bank", "BankTypes", "Engine"]
