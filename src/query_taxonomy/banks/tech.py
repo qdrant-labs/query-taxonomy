@@ -33,8 +33,37 @@ class CVEBank(IdentifierBank):
         return builder.string("CVE-").exactly(4).digit().char("-").at_least(4).digit()
 
 
+_VERSION_KEYWORDS = ("version", "revision", "release", "build", "ver")
+
+# semver forbids leading zeros — 04.06.010 is a statute citation, not a version
+_SEMVER_PART = (
+    RegexBuilder()
+    .any_of()
+        .group().char("0").end()
+        .group().range("1", "9").zero_or_more().digit().end()
+    .end()
+)
+
+# pre-release tags start with a letter (-beta.1, -rc2); -3.4 is a numeric range
+_PRERELEASE = (
+    RegexBuilder().char("-").range("a", "z").zero_or_more().subexpression(ALNUM_OR_DOT)
+)
+
+
 class VersionStringBank(IdentifierBank):
-    """Semver-ish versions with optional leading v and pre-release tag."""
+    """Three forms: canonical semver 1.2.3, v-prefixed v1.0 / v2.1.0-beta.1,
+    and keyword-gated "version 1.4" / "Release 22".
+
+    A bare two-part decimal is NOT a version: 0.5 is a p-value, a dose or an
+    effect size, and nothing in the shape says otherwise — those were 92% of
+    this bank's claims before the repair. Knowingly ceded with it: zero-padded
+    parts (22.04.1, v-less 1.02), product-gated forms without a version
+    keyword (Python 3.11), bare "v2" (ignore_case would eat clinical visit
+    V2), and a three-part run inside a longer dotted run (1.2.3.4 — the IP
+    bank owns those). Residual FPs the shape cannot rule out: US state statute
+    citations (RCW 10.46.190), dotted dates (10.10.2020) and dotted phone
+    numbers (800.729.4732) — a digit cap would cost real calendar versions
+    (2024.5.3) and build numbers (10.0.1031), so they stay."""
 
     @property
     @override
@@ -53,15 +82,42 @@ class VersionStringBank(IdentifierBank):
 
     @override
     def define(self, builder: RegexBuilder) -> RegexBuilder:
+        keywords = RegexBuilder().any_of()
+        for keyword in sorted(_VERSION_KEYWORDS, key=len, reverse=True):
+            keywords = keywords.string(keyword)
+        keywords = keywords.end()
+
         return (
             builder
+            .ignore_case()
             .word_boundary()
-            .optional().char("v")
-            .one_or_more().digit()
-            .char(".")
-            .one_or_more().digit()
-            .optional().group().char(".").one_or_more().digit().end()
-            .optional().group().char("-").one_or_more().subexpression(ALNUM_OR_DOT).end()
+            .any_of()
+                # keyword-gated: the gate is the evidence, so one part is enough
+                .group()
+                    .subexpression(keywords)
+                    .optional().char(".")
+                    # a literal space, not \s: the generator samples this
+                    # pattern, and \s emits form feeds into surfaces
+                    .optional().char(" ")
+                    .one_or_more().digit()
+                    .between(0, 3).group().char(".").one_or_more().digit().end()
+                .end()
+                .group()
+                    .char("v")
+                    .one_or_more().digit()
+                    .between(1, 3).group().char(".").one_or_more().digit().end()
+                    .optional().group().subexpression(_PRERELEASE).end()
+                .end()
+                # bare semver: exactly three parts, not a slice of a longer run
+                .group()
+                    .assert_not_behind().any_of().digit().char(".").end().end()
+                    .subexpression(_SEMVER_PART).char(".")
+                    .subexpression(_SEMVER_PART).char(".")
+                    .subexpression(_SEMVER_PART)
+                    .optional().group().subexpression(_PRERELEASE).end()
+                    .assert_not_ahead().char(".").digit().end()
+                .end()
+            .end()
             .word_boundary()
         )
 
