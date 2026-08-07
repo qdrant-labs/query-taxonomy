@@ -15,8 +15,11 @@ class FeatureGroup(StrEnum):
     STATISTICAL_METRICS = "statistical_metrics"
     CORRUPTION = "corruption"
     SEMANTICAL = "semantical"
-    """Language identity and code-switching (SPEC decision 18); corpus-relative
-    features (vocabulary mismatch, ambiguity, etc.) also land here eventually."""
+    """Language identity and code-switching (SPEC decision 18)."""
+    QUERY_CORPUS = "query_corpus"
+    """Query measured AGAINST a collection — undefined without one, so these
+    banks take a CorpusIndex next to the query and stay out of FEATURE_BANKS:
+    the extractor has no corpus to hand them."""
 
 
 class StructuralIdentifier(StrEnum):
@@ -454,6 +457,53 @@ class StatisticalMetric(StrEnum):
     natural_language_share, like nesting_depth."""
 
 
+class QueryCorpusFeature(StrEnum):
+    """
+    Query-Corpus group: scalars a query only has relative to a collection.
+    Method: ALGO (df/length arithmetic over a CorpusIndex — no model, no
+    span claims).
+
+    Every member is deliberately scale-free, so the same number means the
+    same thing in a 3.6K-doc corpus and a 120K-doc one: shares, log-space
+    magnitudes, or idf normalized by the collection's own maximum. Raw idf
+    and raw doc counts are excluded — they rank queries within one corpus
+    and mislead across two.
+    """
+
+    AVG_IDF = "avg_idf"
+    """How rare are the query's terms here, on average? — avg_idf, the mean of
+    `normalized_idf` (log-idf over the collection's own log(N+1) ceiling, so
+    it is a share of attainable rarity, not a raw log count). High = the
+    terms discriminate in THIS corpus -> sparse has something to grip."""
+
+    MAX_IDF = "max_idf"
+    """How rare is the query's rarest term? — max_idf, same normalized scale.
+    Read next to avg_idf: one rare anchor in an otherwise common query (high
+    max, low mean) is the exact-match case; uniformly common terms are not."""
+
+    OOV_SHARE = "oov_share"
+    """What share of the query's terms does the collection not contain at all?
+    — oov_share (df == 0). The hard half of vocabulary mismatch: BM25 cannot
+    score a token the index never saw, so dense is the only route left."""
+
+    COLLECTION_SIZE = "collection_size"
+    """How big is the collection? — collection_size = log10(N + 1). Log space
+    on purpose: 3.6K vs 120K docs is a 1.5-unit step, not a 116K one, so the
+    number is comparable rather than dominated by the largest corpus."""
+
+    AVG_DOC_LENGTH = "avg_doc_length"
+    """How long are the collection's documents? — avg_doc_length =
+    log10(avgdl + 1) in BM25 tokens. Short passages and long clinical
+    records differ by orders of magnitude; the length-normalization term of
+    BM25 is exactly where that difference bites."""
+
+    VOCAB_OVERLAP = "vocab_overlap"
+    """How much of the collection does each query term touch, on average? —
+    vocab_overlap = mean(df / N). The mass half of vocabulary mismatch,
+    dominated by the query's COMMON terms where avg_idf is dominated by its
+    rare ones; oov_share is the set-membership half."""
+
+
 class SemanticFeature(StrEnum):
     """
     Semantical group: features that capture meaning-affecting register and
@@ -473,3 +523,19 @@ class SemanticFeature(StrEnum):
     with English class-marker terms). Stat: is_code_switched (0.0/1.0),
     language_count. Not segmentable — the mixing is the register, not a
     sequence of monolingual spans."""
+
+
+RELEVANCE_CHANGING: frozenset[str] = frozenset({
+    SentenceMarker.NEGATION,
+    SentenceMarker.COMPARATIVE,
+    LogicalStructure.TEMPORAL,
+    LogicalStructure.TEMPORAL_LIKE,
+})
+"""Features whose presence changes WHICH documents answer a query — the
+`Relevance Changing` column of query-taxonomy.csv. Adding one to an existing
+query invalidates the judgments made before it ("laptops with touchscreen" ->
+"laptops without touchscreen" makes the judged document wrong), and no surface
+copied from that document repairs it: the answer key has to be rebuilt rather
+than transferred. TEMPORAL_LIKE has no CSV row of its own — it is the MODEL
+layer's emit name for TEMPORAL, so it inherits the property.
+"""

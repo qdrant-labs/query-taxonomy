@@ -79,7 +79,7 @@ class GeneralBank(ABC, Generic[OutT, EngineT]):
         """Chain the definition onto `builder` and return the result."""
 
     @abstractmethod
-    def compute(self, text: str) -> list[OutT]:
+    def compute(self, text: str, /) -> list[OutT]:
         """Feature outputs for one text: spans (left to right,
         non-overlapping) or named stats."""
 
