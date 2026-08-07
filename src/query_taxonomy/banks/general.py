@@ -93,7 +93,7 @@ class BusinessTemporalBank(IdentifierBank):
 
 
 class DateTimeBank(IdentifierBank):
-    """ISO 8601 dates with optional time/offset, or 10-digit unix epochs (2017-2033)."""
+    """ISO 8601 dates with optional time/offset."""
 
     @property
     @override
@@ -137,7 +137,6 @@ class DateTimeBank(IdentifierBank):
                         .end()
                     .end()
                 .end()
-                .group().char("1").range("5", "9").exactly(8).digit().end()
             .end()
             .word_boundary()
         )
