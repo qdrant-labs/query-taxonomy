@@ -64,8 +64,10 @@ class SpacyBank(StatBank["Language"], ABC):
 class NaturalLanguageSignalBank(SpacyBank):
     """How natural-language-shaped is the query? (SPEC decision 14)
     natural_language_share = fraction of tokens that are function words
-    (UD closed-class POS: the/of/to/is/when...). Keyword telegrams sit near
-    0.0 -> sparse is safe; proper sentences sit near 0.4-0.5 -> dense wins.
+    (UD closed-class POS minus NUM: the/of/to/is/when...). Keyword telegrams
+    sit near 0.0 -> sparse is safe; proper sentences sit near 0.4-0.5 -> dense
+    wins. Numerals are content, not glue, and spaCy tags bare identifiers NUM
+    — see CLOSED_CLASS for why counting them broke identifier-dense queries.
     The stopword-ratio bank is its dependency-free REGEX fallback."""
 
     def __init__(self) -> None:
