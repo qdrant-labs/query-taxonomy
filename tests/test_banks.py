@@ -3,6 +3,7 @@
 Deliberately not exhaustive — these pin the core of each regex, not its edges.
 """
 
+import math
 from enum import StrEnum
 
 import pytest
@@ -10,7 +11,8 @@ import pytest
 from query_taxonomy import FEATURE_BANKS
 from query_taxonomy.banks import BANKS, StructuralIdentifier
 from query_taxonomy.core import Engine, StatBank
-from query_taxonomy.features import FeatureExtractor
+from query_taxonomy.corpus_relative import CORPUS_RELATIVE_BANKS, CorpusIndex
+from query_taxonomy.features import FeatureExtractor, normalized_idf
 from query_taxonomy.metrics import LengthBank, StopwordRatioBank
 from query_taxonomy.taxonomy import (
     FeatureGroup,
@@ -74,16 +76,16 @@ CASES: dict[StrEnum, tuple[list[str], list[str]]] = {
         ["CVE-24-1", "cve"],
     ),
     StructuralIdentifier.DATETIME: (
-        ["2026-07-08T10:00Z", "1751968800"],
-        ["12-34-56", "1234567890123"],
+        ["2024-03-15", "2024-03-15T09:30:00Z"],
+        ["1523759459", "5551234567"],
     ),
     StructuralIdentifier.NUMBER: (
         ["42", "pi is 3.14159"],
         ["abc", "..."],
     ),
     StructuralIdentifier.VERSION_STRING: (
-        ["v1.2.3", "upgrade to 2.0.0-beta.1"],
-        ["v.", "version"],
+        ["v1.2.3", "upgrade to 2.0.0-beta.1", "SPSS version 22.0"],
+        ["v.", "version", "p = 0.05", "a 2.5-fold increase", "0.21-0.95 CI"],
     ),
     StructuralIdentifier.HTTP_STATUS_CODE: (
         ["error 503", "HTTP 429"],
@@ -119,7 +121,7 @@ CASES: dict[StrEnum, tuple[list[str], list[str]]] = {
     ),
     StructuralIdentifier.UUID: (
         ["550e8400-e29b-41d4-a716-446655440000", "d41d8cd98f00b204e9800998ecf8427e"],
-        ["hello-world", "deadbeef"],
+        ["a" * 32, "hello-world"],
     ),
     StructuralIdentifier.URI: (
         ["https://qdrant.tech/docs", "s3://bucket/path"],
@@ -472,3 +474,39 @@ def test_stopword_ratio_bank() -> None:
 def test_stopword_ratio_empty_text() -> None:
     stats = {stat.name: stat.value for stat in StopwordRatioBank().compute("")}
     assert stats == {"stopword_ratio": 0.0}
+
+
+# 4 docs averaging 2.5 tokens; "cake" is absent from the index.
+_INDEX = CorpusIndex(
+    document_frequencies={"vector": 2, "hnsw": 1, "search": 4},
+    n_docs=4,
+    avgdl=2.5,
+)
+
+
+def test_corpus_relative_banks() -> None:
+    tokens = ["vector", "hnsw", "cake"]
+    stats = {
+        stat.name: stat.value
+        for cls in CORPUS_RELATIVE_BANKS
+        for stat in cls(_INDEX).compute(tokens)
+    }
+    idfs = [normalized_idf(_INDEX.df(token), 4) for token in tokens]
+    assert stats["avg_idf"] == pytest.approx(sum(idfs) / 3)
+    assert stats["max_idf"] == pytest.approx(1.0)  # absent token -> ceiling
+    assert stats["oov_share"] == pytest.approx(1 / 3)
+    assert stats["vocab_overlap"] == pytest.approx((2 / 4 + 1 / 4 + 0) / 3)
+    assert stats["collection_size"] == pytest.approx(math.log10(5))
+    assert stats["avg_doc_length"] == pytest.approx(math.log10(3.5))
+
+
+def test_corpus_relative_banks_empty_query() -> None:
+    stats = {
+        stat.name: stat.value
+        for cls in CORPUS_RELATIVE_BANKS
+        for stat in cls(_INDEX).compute([])
+    }
+    assert stats["avg_idf"] == 0.0
+    assert stats["max_idf"] == 0.0
+    assert stats["oov_share"] == 0.0
+    assert stats["vocab_overlap"] == 0.0
