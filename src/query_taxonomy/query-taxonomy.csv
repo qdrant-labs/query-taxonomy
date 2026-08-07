@@ -1,100 +1,107 @@
-Query feature,Corpus Relative,Example,Group,Method,Subgroups,Why?
-Structured Identifiers,No,,Parent,REGEX,,Span-emitting banks across 8 identifier domains. Presence of any identifier type signals query specificity and sparse-retrieval alignment — exact token match matters.
-number,No,"42, 3.14159, 1e-9",Lexogram,REGEX,general,Plain numerics appear in every domain; anchor for quantity-specific retrieval.
-datetime,No,"2026-07-08T10:00Z, 1751968800",Lexogram,REGEX,general,Absolute time references demand exact-match on date tokens — sparse advantage.
-business_temporal,No,"Q3 2026, FY25, CW28, Sprint 42",Lexogram,REGEX,general,Fiscal / calendar references; domain-specific abbreviations invisible to dense without fine-tuning.
-ip_address,No,"192.168.1.1, 2001:db8::1",Lexogram,REGEX,network,Infrastructure queries where the exact address is the intent — sparse required.
-mac_address,No,00:1B:44:11:3A:B7,Lexogram,REGEX,network,Hardware identifiers; bit-exact matching.
-email,No,jane.doe@example.com,Lexogram,REGEX,network,Structured format; partial matches (domain-only) mislead dense.
-host_port,No,"localhost:6333, qdrant.tech",Lexogram,REGEX,network,Network endpoints — hostname:port is an atomic unit for exact retrieval.
-cidr,No,"192.168.0.0/16, 10.0.0.0/8",Lexogram,REGEX,network,Subnet notation; range semantics require exact prefix match.
-api_key,No,"sk-…, AKIA…, ghp_…",Lexogram,REGEX,network,Secret token shapes — detection enables redaction / routing away from logging.
-http_status_code,No,"error 503, HTTP 429",Lexogram,REGEX,network,Status codes are precise lookup keys in error-documentation corpora.
-version_string,No,"v1.2.3, 2.0.0-beta.1",Lexogram,REGEX,tech,Semver tokens must match exactly — dense blurs patch/minor boundaries.
-uuid,No,"550e8400-e29b-41d4-a716-446655440000",Lexogram,REGEX,tech,Random identifiers; no semantic content for dense to exploit.
-uri,No,"https://qdrant.tech/docs, s3://bucket/path",Lexogram,REGEX,tech,URIs are atomic lookup keys; dense embeddings cannot reconstruct path semantics.
-cve,No,CVE-2024-3094,Lexogram,REGEX,tech,Vulnerability IDs are exact lookup keys in security corpora — sparse dominates.
-code_identifier,No,"getUserById, os.path.join, MY_CONSTANT",Lexogram,REGEX,tech,"camelCase / snake_case / dotted path tokens — code corpora index on exact identifiers, not paraphrases."
-package_coordinate,No,"@types/node, org.apache:kafka",Lexogram,REGEX,tech,Package registry coordinates are precise — version pinning requires exact match.
-error_code_like,No,"EACCES, ERR_CONNECTION_REFUSED",Lexogram,REGEX,tech,"POSIX / Node error-code-shaped tokens. Assumptive (MODERATE): collides with screaming identifiers in scientific text."
-env_var,No,"$QDRANT__SERVICE__PORT, --force",Lexogram,REGEX,tech,Environment variables and CLI flags are exact configuration keys.
-hex_color,No,#FF5733,Lexogram,REGEX,tech,Color codes are exact values; design/CSS corpora index them directly.
-value_with_unit,No,"16GB, 3.5mm, 240Hz",Lexogram,REGEX,tech,Quantity + unit is an atomic spec; dense may paraphrase the unit but lose the quantity.
-standards_citation,No,"RFC 9110, ISO/IEC 27001, IEEE 802.11ax",Lexogram,REGEX,tech,Standards references are exact document keys — mismatching RFC numbers is a hard failure.
-file_path,No,"/etc/qdrant/config.yaml, C:\Users\andrei\report.csv",Lexogram,REGEX,tech,File system paths are exact; dense cannot generalise across OS path conventions usefully.
-crypto_address,No,bc1qxy2kgdyg…,Lexogram,REGEX,tech,On-chain addresses are unique and exact — any paraphrase is wrong.
-game_notation_like,No,"Nf3, O-O, rnbqkbnr/pppppppp/8/…",Lexogram,REGEX,tech,"Chess PGN/FEN moves. Assumptive (MODERATE): letter-digit shapes collide with gene names / protein mutations under domain shift."
-currency_amount,No,"€499.99, $1,200",Lexogram,REGEX,finance,Price strings require exact numeric match; dense cannot reliably distinguish $499 from $4990.
-iban,No,DE89 3704 0044 0532 0130 00,Lexogram,REGEX,finance,Bank account numbers are exact identifiers — no semantic proximity is meaningful.
-bic,No,"DEUTDEFF, MARKDEF1100",Lexogram,REGEX,finance,SWIFT / BIC codes are exact institution keys.
-securities_id,No,"US0378331005, 037833100",Lexogram,REGEX,finance,ISIN / CUSIP are globally unique securities keys.
-stock_ticker_like,No,"$AAPL, NVDA",Lexogram,REGEX,finance,"Ticker-shaped tokens. Assumptive (AMBIGUOUS): worst FP generator — fires on gene names (DNA, TCR, ADHD) in scientific corpora."
-lei,No,529900T8BM49AURSDO55,Lexogram,REGEX,finance,20-char legal entity identifier — exact match only.
-derivatives_symbol_like,No,"AAPL240119C00150000, ESH25",Lexogram,REGEX,finance,"OCC option / futures symbol shapes. Assumptive (MODERATE): domain-shift-prone (ALDH1, PIN1 in biomedical text)."
-market_code,No,"XNYS, 021000021, BBG000BLNNH6",Lexogram,REGEX,finance,Market infrastructure codes (MIC / ABA routing / FIGI) are exact institutional keys.
-industry_code,No,"NAICS 541511, SIC 7372",Lexogram,REGEX,finance,Industry classification codes are precise lookup keys in regulatory / business corpora.
-business_registration,No,"EIN 12-3456789, DUNS 150483782",Lexogram,REGEX,finance,Company registration numbers are exact administrative identifiers.
-tax_id,No,DE123456789,Lexogram,REGEX,finance,VAT / EIN / TIN numbers require exact match — paraphrases are legally meaningless.
-betting_odds,No,"5/2, 3.50, +150",Lexogram,REGEX,finance,Odds formats encode precise probability representations; exact match matters.
-ticket_like,No,"INV-2026-000123, TCK-84721",Lexogram,REGEX,finance,"Invoice / ticket reference shapes. Assumptive (MODERATE): fires on chemical/protein codes (IL-10, TDP-43) in scientific text."
-legal_citation,No,"17 U.S.C. § 107, 539 F.3d 1024",Lexogram,REGEX,legal,Legal citations are canonical document keys — a mismatched section number returns the wrong authority.
-court_docket,No,"1:21-cv-02547, 2:19-cr-00123",Lexogram,REGEX,legal,Docket numbers are unique case identifiers; exact match required for case-law retrieval.
-neutral_citation,No,"ECLI:EU:C:2019:772, [2019] UKSC 41",Lexogram,REGEX,legal,Neutral / ECLI citations are the primary keys in EU and Commonwealth legal corpora.
-celex,No,32016R0679,Lexogram,REGEX,legal,EU CELEX IDs are document-level exact keys in EUR-Lex.
-legislative_citation,No,"Pub. L. 117-58, 88 FR 12345",Lexogram,REGEX,legal,Public Law and Federal Register references are exact document pointers.
-eu_regulatory_citation,No,"Art. 6(1)(a) GDPR, Regulation (EU) 2016/679",Lexogram,REGEX,legal,EU regulatory article citations require exact article/paragraph match.
-patent_number,No,"US10123456B2, EP1234567A1",Lexogram,REGEX,legal,Patent numbers are globally unique exact identifiers.
-national_id,No,"123-45-6789 (SSN), QQ123456C (NINO)",Lexogram,REGEX,legal,National ID formats are PII — detection enables redaction before routing.
-medical_code,No,"J45.909, rs429358",Lexogram,REGEX,medical,ICD / SNP codes are exact clinical lookup keys — wrong code → wrong disease.
-clinical_coding,No,"CPT 99213, SNOMED 22298006, LOINC 4548-4",Lexogram,REGEX,medical,Procedure and terminology codes are exact keys in clinical knowledge bases.
-drug_id,No,"NDC 0069-4200-83, ATC A10BA02",Lexogram,REGEX,medical,Drug registry codes are exact identifiers — paraphrasing a drug ID is a safety risk.
-genomic_accession,No,"P12345 (UniProt), ENSG00000139618, NM_000546",Lexogram,REGEX,medical,Sequence database accessions are exact primary keys in bioinformatics corpora.
-hgvs_variant,No,"c.76A>T, p.Lys76Asn",Lexogram,REGEX,medical,HGVS variant notation is an exact molecular address — any paraphrase loses the mutation site.
-chemical_id,No,"BSYNRYMUTXBXSQ-UHFFFAOYSA-N (InChIKey)",Lexogram,REGEX,medical,"InChIKey / PubChem CID — exact structure identifiers. SMILES deliberately excluded: it is a grammar, not a token format."
-clinical_trial_id,No,"NCT01234567, PMID 31978945, 0000-0002-1825-0097",Lexogram,REGEX,medical,Trial / publication / researcher registry IDs are exact lookup keys.
-healthcare_provider_id,No,"NPI 1234567893, DEA AB1234563",Lexogram,REGEX,medical,Provider identifiers are PII and exact administrative keys.
-phone_number,No,+49 30 12345678,Lexogram,REGEX,logistics,E.164 and local phone formats — PII detection and exact contact retrieval.
-postal_code,No,"10115, SW1A 1AA",Lexogram,REGEX,logistics,Postcodes are geographic exact keys — dense may conflate adjacent postcodes.
-geo_coordinate,No,"52.5200, 13.4050",Lexogram,REGEX,logistics,Decimal degree pairs are precise spatial references.
-alt_geocoding,No,"8FVC9G8F+6X (Plus Code), 33UUU9012 (MGRS)",Lexogram,REGEX,logistics,Alternative geocoding systems (what3words / Plus Codes / MGRS) are exact location keys.
-booking_reference_like,No,"LH1830, X4B9C2",Lexogram,REGEX,logistics,"Airline PNR / flight-number-shaped tokens. Assumptive (AMBIGUOUS): fires on gene names (CX3CR1, CD4) in scientific text."
-tracking_number,No,1Z999AA10123456784,Lexogram,REGEX,logistics,Carrier tracking codes are exact shipment keys.
-barcode,No,"B08N5WRWNW (ASIN), EAN 4006381333931",Lexogram,REGEX,logistics,Retail / product barcodes and ASINs are exact catalogue keys.
-sku,No,"WH-1000XM5, RTX 4090",Lexogram,REGEX,logistics,Manufacturer part / model numbers are exact product keys in e-commerce corpora.
-serial_number,No,356938035643809,Lexogram,REGEX,logistics,Device serial numbers are globally unique exact identifiers.
-vin_container,No,"WVWZZZ1JZXW000001 (VIN), MSKU1234567 (container)",Lexogram,REGEX,logistics,Vehicle and container identifiers are exact traceability keys.
-license_plate,No,B-QD 1234,Lexogram,REGEX,logistics,License plates are exact identifiers in vehicle-registry corpora.
-airport_airline_code,No,"BER (IATA), EDDB (ICAO), LH (airline)",Lexogram,REGEX,logistics,IATA / ICAO codes are exact institutional keys in travel and ATC corpora.
-aircraft_vessel_reg_like,No,"N12345, D-AIMA, IMO 9074729",Lexogram,REGEX,logistics,"Tail-number / IMO / MMSI-shaped tokens. Assumptive (MODERATE): collides with protein mutation notation (N348I)."
-customs_classification,No,"HS 090111, HTS 0901.11.00",Lexogram,REGEX,logistics,Tariff codes are exact administrative keys in trade and compliance corpora.
-hazmat_code,No,"UN1203, H225 (GHS)",Lexogram,REGEX,logistics,Hazardous material codes are exact regulatory keys — misidentification is a safety risk.
-material_grade,No,"AISI 304, 6061-T6, Ti-6Al-4V",Lexogram,REGEX,logistics,Material specification codes are exact engineering keys.
-nsn,No,1234-56-789-0123,Lexogram,REGEX,logistics,NATO Stock Numbers are exact supply-chain identifiers.
-sim_subscriber_id,No,"8901410321111851072 (ICCID), 310150123456789 (IMSI)",Lexogram,REGEX,logistics,SIM subscriber identifiers are PII — detection enables redaction.
-iso_code,No,"en-US (BCP-47), EUR (ISO 4217), DE (ISO 3166)",Lexogram,REGEX,media,Locale / currency / country codes are exact institutional keys.
-social_handle,No,"@qdrant_engine, #vectorsearch",Lexogram,REGEX,media,Social handles are exact user/topic keys in social-media corpora.
-academic_identifier,No,"10.1145/3539618 (DOI), 2104.08663 (arXiv), 978-3-16-148410-0 (ISBN)",Lexogram,REGEX,media,Academic publication identifiers are exact bibliographic keys.
-issn,No,2049-3630,Lexogram,REGEX,media,Serial publication IDs are exact journal keys.
-music_work_code,No,"USRC17607839 (ISRC), T-034.524.680-1 (ISWC)",Lexogram,REGEX,media,Music rights codes are exact work / recording identifiers.
-media_db_id,No,"tt0111161 (IMDb), nm0000138",Lexogram,REGEX,media,Film / person database identifiers are exact lookup keys.
-library_classification,No,"005.74 (Dewey), QA76.73.C15 (LoC)",Lexogram,REGEX,media,Library call numbers are exact shelf / catalogue keys.
-astronomical_designation,No,"NGC 224, M31, HD 209458, Kepler-186f",Lexogram,REGEX,media,Astronomical catalogue designations are exact object keys.
-Sentence Markers,,,Parent,REGEX,,Closed-list lexical cues about query register. No span claim competition with identifiers — independent group.
-negation,No,"""laptops without touchscreen"", ""no CUDA support""",Lexogram,REGEX,sentence_markers,"Negation is invisible to sparse bag-of-words. Markers: not · no · without · never · except · excluding. Dense embeddings can represent it; sparse cannot."
-acronym,No,"NY, N.Y., NASA, DNA (cased shape)",Lexogram,REGEX,sentence_markers,"Cased acronym shapes signal compressed identifier content. Lowercase forms (tv, dna) require model disambiguation — out of scope."
-comparative,No,"""faster than Python"", ""best database"", ""cheapest flights""",Lexogram,REGEX,sentence_markers,"Comparative / superlative constructs encode ranking semantics bag-of-words cannot capture. Irregulars and function words only (better, worst, more, than) — morphological -er/-est excluded as FP-prone."
-greeting,No,"""hi how do I set up Qdrant"", ""hello what is HNSW""",Lexogram,REGEX,sentence_markers,Pure retrieval noise; strong signal of conversational register → dense/hybrid preferred.
-politeness,No,"""please explain quantization"", ""could you help me find restaurants""",Lexogram,REGEX,sentence_markers,Filler tokens hurt sparse precision by matching documents containing these words. Signals NL/conversational phrasing → dense.
-interjection,No,"""wow how does HNSW work"", ""ugh my docker container keeps crashing""",Lexogram,REGEX,sentence_markers,Noise tokens dilute sparse signal. Presence indicates conversational register → dense/hybrid.
-Logical Structures,,,Parent,REGEX,,Query-logic constructs and embedded formal grammars — all REGEX banks.
-operator_syntax,No,"""cats AND dogs"", ""java NOT javascript"", ""embedding OR vector""",Lexogram,REGEX,logical_structures,"Explicit boolean operators are retrieval commands — uppercase-gated, exact-match sparse is the correct mode. Lowercase and/or/not excluded (ordinary function words)."
-temporal,No,"""bitcoin price today"", ""3 days ago"", ""last quarter"", ""next sprint""",Lexogram,REGEX,logical_structures,"Relative temporal expressions (closed-vocab regex). Absolute dates/quarters belong to Structured Identifiers (datetime · business_temporal); this bank covers the rest."
-code_fragment,No,"""why x != y in python"", ""SELECT id FROM users WHERE slow""",Lexogram,REGEX,logical_structures,"Embedded programming-language grammar. Compound symbolic operators and name( call syntax are not attested search dialect — in a query they evidence code. Claims evidence tokens only; exact symbols are strong sparse signal (SPEC d20)."
-math_expression,No,"""solve x^2 + y^2 = 25"", ""E = mc^2"", ""2+2""",Lexogram,REGEX,logical_structures,"Embedded equation grammar — formal content where exact symbols matter (SPEC d20). Claims operand-operator-operand runs and = flanked by expressions; bare single-char operators never claimed."
-Statistical Metrics,,,Parent,ALGO,,Scalar features per query — no span claims. Five router signals; each scalar answers one question the Strategy Router cares about.
-length,No,"length_words=6 · length_chars=34",Lexogram,ALGO,statistical_metrics,"Scalars: length_words (regex \w+ count) · length_chars. Very short queries give dense too little context → sparse-safe. Long queries carry enough signal for dense. REGEX engine — no model required."
-stopword_ratio,No,"stopword_ratio=0.50 (""the best restaurants in Berlin"") · 0.0 (""restaurant Berlin cheap"")",Lexogram,REGEX,statistical_metrics,"Scalars: stopword_ratio · stopword_count. REGEX fallback of natural_language_share — closed stopword list, no spaCy required. High = natural phrasing → dense; near-zero = keyword telegram → sparse."
-natural_language_signal,No,"natural_language_share=0.476 (question) · 0.0 (CVE telegram)",Lexogram,ALGO,statistical_metrics,"Scalar: natural_language_share — fraction of tokens that are UD closed-class POS (ADP/AUX/CCONJ/DET/NUM/PART/PRON/SCONJ). Near 0 = keyword telegram → sparse; 0.4–0.5 = natural sentence → dense. Requires pinned spaCy model (en_core_web_sm)."
-morphology,No,"word_variation_share=0.25 (""running dogs were found"") · 0.0 (""run dog find"")",Lexogram,ALGO,statistical_metrics,"Scalar: word_variation_share — fraction of alpha tokens whose lemma ≠ surface form (running → run). Grammar-caused vocabulary mismatch risk: high → embeddings help; zero → BM25 safe. Requires pinned spaCy model."
-syntactic_depth,No,"nesting_depth=4 · statement_count=2 (""the paper that introduced attention, which was later adopted in GPT"")",Lexogram,ALGO,statistical_metrics,"Scalars: nesting_depth (max dependency-tree depth) · statement_count (clausal dep count). Deep / multi-statement → dense or decompose+rerank. Read jointly with natural_language_share — parser hallucinates structure on non-sentences. Requires pinned spaCy model."
-coordination,No,"widest_list_size=3 (""boston, paris and tokyo"") · 0 (no coordination)",Lexogram,ALGO,statistical_metrics,"Scalar: widest_list_size — how many equal parts does the longest and/or/comma chain string together? Wide-but-flat enumeration nesting_depth cannot see. Read jointly with natural_language_share. Requires pinned spaCy model."
+Query feature,Corpus Relative,Relevance Changing,Example,Group,Method,Subgroups,Why?
+Structured Identifiers,No,,,Parent,REGEX,,Span-emitting banks across 8 identifier domains. Presence of any identifier type signals query specificity and sparse-retrieval alignment — exact token match matters.
+number,No,No,"42, 3.14159, 1e-9",Lexogram,REGEX,general,Plain numerics appear in every domain; anchor for quantity-specific retrieval.
+datetime,No,No,"2026-07-08T10:00Z, 1751968800",Lexogram,REGEX,general,Absolute time references demand exact-match on date tokens — sparse advantage.
+business_temporal,No,No,"Q3 2026, FY25, CW28, Sprint 42",Lexogram,REGEX,general,Fiscal / calendar references; domain-specific abbreviations invisible to dense without fine-tuning.
+ip_address,No,No,"192.168.1.1, 2001:db8::1",Lexogram,REGEX,network,Infrastructure queries where the exact address is the intent — sparse required.
+mac_address,No,No,00:1B:44:11:3A:B7,Lexogram,REGEX,network,Hardware identifiers; bit-exact matching.
+email,No,No,jane.doe@example.com,Lexogram,REGEX,network,Structured format; partial matches (domain-only) mislead dense.
+host_port,No,No,"localhost:6333, qdrant.tech",Lexogram,REGEX,network,Network endpoints — hostname:port is an atomic unit for exact retrieval.
+cidr,No,No,"192.168.0.0/16, 10.0.0.0/8",Lexogram,REGEX,network,Subnet notation; range semantics require exact prefix match.
+api_key,No,No,"sk-…, AKIA…, ghp_…",Lexogram,REGEX,network,Secret token shapes — detection enables redaction / routing away from logging.
+http_status_code,No,No,"error 503, HTTP 429",Lexogram,REGEX,network,Status codes are precise lookup keys in error-documentation corpora.
+version_string,No,No,"v1.2.3, 2.0.0-beta.1",Lexogram,REGEX,tech,Semver tokens must match exactly — dense blurs patch/minor boundaries.
+uuid,No,No,550e8400-e29b-41d4-a716-446655440000,Lexogram,REGEX,tech,Random identifiers; no semantic content for dense to exploit.
+uri,No,No,"https://qdrant.tech/docs, s3://bucket/path",Lexogram,REGEX,tech,URIs are atomic lookup keys; dense embeddings cannot reconstruct path semantics.
+cve,No,No,CVE-2024-3094,Lexogram,REGEX,tech,Vulnerability IDs are exact lookup keys in security corpora — sparse dominates.
+code_identifier,No,No,"getUserById, os.path.join, MY_CONSTANT",Lexogram,REGEX,tech,"camelCase / snake_case / dotted path tokens — code corpora index on exact identifiers, not paraphrases."
+package_coordinate,No,No,"@types/node, org.apache:kafka",Lexogram,REGEX,tech,Package registry coordinates are precise — version pinning requires exact match.
+error_code_like,No,No,"EACCES, ERR_CONNECTION_REFUSED",Lexogram,REGEX,tech,POSIX / Node error-code-shaped tokens. Assumptive (MODERATE): collides with screaming identifiers in scientific text.
+env_var,No,No,"$QDRANT__SERVICE__PORT, --force",Lexogram,REGEX,tech,Environment variables and CLI flags are exact configuration keys.
+hex_color,No,No,#FF5733,Lexogram,REGEX,tech,Color codes are exact values; design/CSS corpora index them directly.
+value_with_unit,No,No,"16GB, 3.5mm, 240Hz",Lexogram,REGEX,tech,Quantity + unit is an atomic spec; dense may paraphrase the unit but lose the quantity.
+standards_citation,No,No,"RFC 9110, ISO/IEC 27001, IEEE 802.11ax",Lexogram,REGEX,tech,Standards references are exact document keys — mismatching RFC numbers is a hard failure.
+file_path,No,No,"/etc/qdrant/config.yaml, C:\Users\andrei\report.csv",Lexogram,REGEX,tech,File system paths are exact; dense cannot generalise across OS path conventions usefully.
+crypto_address,No,No,bc1qxy2kgdyg…,Lexogram,REGEX,tech,On-chain addresses are unique and exact — any paraphrase is wrong.
+game_notation_like,No,No,"Nf3, O-O, rnbqkbnr/pppppppp/8/…",Lexogram,REGEX,tech,Chess PGN/FEN moves. Assumptive (MODERATE): letter-digit shapes collide with gene names / protein mutations under domain shift.
+currency_amount,No,No,"€499.99, $1,200",Lexogram,REGEX,finance,Price strings require exact numeric match; dense cannot reliably distinguish $499 from $4990.
+iban,No,No,DE89 3704 0044 0532 0130 00,Lexogram,REGEX,finance,Bank account numbers are exact identifiers — no semantic proximity is meaningful.
+bic,No,No,"DEUTDEFF, MARKDEF1100",Lexogram,REGEX,finance,SWIFT / BIC codes are exact institution keys.
+securities_id,No,No,"US0378331005, 037833100",Lexogram,REGEX,finance,ISIN / CUSIP are globally unique securities keys.
+stock_ticker_like,No,No,"$AAPL, NVDA",Lexogram,REGEX,finance,"Ticker-shaped tokens. Assumptive (AMBIGUOUS): worst FP generator — fires on gene names (DNA, TCR, ADHD) in scientific corpora."
+lei,No,No,529900T8BM49AURSDO55,Lexogram,REGEX,finance,20-char legal entity identifier — exact match only.
+derivatives_symbol_like,No,No,"AAPL240119C00150000, ESH25",Lexogram,REGEX,finance,"OCC option / futures symbol shapes. Assumptive (MODERATE): domain-shift-prone (ALDH1, PIN1 in biomedical text)."
+market_code,No,No,"XNYS, 021000021, BBG000BLNNH6",Lexogram,REGEX,finance,Market infrastructure codes (MIC / ABA routing / FIGI) are exact institutional keys.
+industry_code,No,No,"NAICS 541511, SIC 7372",Lexogram,REGEX,finance,Industry classification codes are precise lookup keys in regulatory / business corpora.
+business_registration,No,No,"EIN 12-3456789, DUNS 150483782",Lexogram,REGEX,finance,Company registration numbers are exact administrative identifiers.
+tax_id,No,No,DE123456789,Lexogram,REGEX,finance,VAT / EIN / TIN numbers require exact match — paraphrases are legally meaningless.
+betting_odds,No,No,"5/2, 3.50, +150",Lexogram,REGEX,finance,Odds formats encode precise probability representations; exact match matters.
+ticket_like,No,No,"INV-2026-000123, TCK-84721",Lexogram,REGEX,finance,"Invoice / ticket reference shapes. Assumptive (MODERATE): fires on chemical/protein codes (IL-10, TDP-43) in scientific text."
+legal_citation,No,No,"17 U.S.C. § 107, 539 F.3d 1024",Lexogram,REGEX,legal,Legal citations are canonical document keys — a mismatched section number returns the wrong authority.
+court_docket,No,No,"1:21-cv-02547, 2:19-cr-00123",Lexogram,REGEX,legal,Docket numbers are unique case identifiers; exact match required for case-law retrieval.
+neutral_citation,No,No,"ECLI:EU:C:2019:772, [2019] UKSC 41",Lexogram,REGEX,legal,Neutral / ECLI citations are the primary keys in EU and Commonwealth legal corpora.
+celex,No,No,32016R0679,Lexogram,REGEX,legal,EU CELEX IDs are document-level exact keys in EUR-Lex.
+legislative_citation,No,No,"Pub. L. 117-58, 88 FR 12345",Lexogram,REGEX,legal,Public Law and Federal Register references are exact document pointers.
+eu_regulatory_citation,No,No,"Art. 6(1)(a) GDPR, Regulation (EU) 2016/679",Lexogram,REGEX,legal,EU regulatory article citations require exact article/paragraph match.
+patent_number,No,No,"US10123456B2, EP1234567A1",Lexogram,REGEX,legal,Patent numbers are globally unique exact identifiers.
+national_id,No,No,"123-45-6789 (SSN), QQ123456C (NINO)",Lexogram,REGEX,legal,National ID formats are PII — detection enables redaction before routing.
+medical_code,No,No,"J45.909, rs429358",Lexogram,REGEX,medical,ICD / SNP codes are exact clinical lookup keys — wrong code → wrong disease.
+clinical_coding,No,No,"CPT 99213, SNOMED 22298006, LOINC 4548-4",Lexogram,REGEX,medical,Procedure and terminology codes are exact keys in clinical knowledge bases.
+drug_id,No,No,"NDC 0069-4200-83, ATC A10BA02",Lexogram,REGEX,medical,Drug registry codes are exact identifiers — paraphrasing a drug ID is a safety risk.
+genomic_accession,No,No,"P12345 (UniProt), ENSG00000139618, NM_000546",Lexogram,REGEX,medical,Sequence database accessions are exact primary keys in bioinformatics corpora.
+hgvs_variant,No,No,"c.76A>T, p.Lys76Asn",Lexogram,REGEX,medical,HGVS variant notation is an exact molecular address — any paraphrase loses the mutation site.
+chemical_id,No,No,BSYNRYMUTXBXSQ-UHFFFAOYSA-N (InChIKey),Lexogram,REGEX,medical,"InChIKey / PubChem CID — exact structure identifiers. SMILES deliberately excluded: it is a grammar, not a token format."
+clinical_trial_id,No,No,"NCT01234567, PMID 31978945, 0000-0002-1825-0097",Lexogram,REGEX,medical,Trial / publication / researcher registry IDs are exact lookup keys.
+healthcare_provider_id,No,No,"NPI 1234567893, DEA AB1234563",Lexogram,REGEX,medical,Provider identifiers are PII and exact administrative keys.
+phone_number,No,No,+49 30 12345678,Lexogram,REGEX,logistics,E.164 and local phone formats — PII detection and exact contact retrieval.
+postal_code,No,No,"10115, SW1A 1AA",Lexogram,REGEX,logistics,Postcodes are geographic exact keys — dense may conflate adjacent postcodes.
+geo_coordinate,No,No,"52.5200, 13.4050",Lexogram,REGEX,logistics,Decimal degree pairs are precise spatial references.
+alt_geocoding,No,No,"8FVC9G8F+6X (Plus Code), 33UUU9012 (MGRS)",Lexogram,REGEX,logistics,Alternative geocoding systems (what3words / Plus Codes / MGRS) are exact location keys.
+booking_reference_like,No,No,"LH1830, X4B9C2",Lexogram,REGEX,logistics,"Airline PNR / flight-number-shaped tokens. Assumptive (AMBIGUOUS): fires on gene names (CX3CR1, CD4) in scientific text."
+tracking_number,No,No,1Z999AA10123456784,Lexogram,REGEX,logistics,Carrier tracking codes are exact shipment keys.
+barcode,No,No,"B08N5WRWNW (ASIN), EAN 4006381333931",Lexogram,REGEX,logistics,Retail / product barcodes and ASINs are exact catalogue keys.
+sku,No,No,"WH-1000XM5, RTX 4090",Lexogram,REGEX,logistics,Manufacturer part / model numbers are exact product keys in e-commerce corpora.
+serial_number,No,No,356938035643809,Lexogram,REGEX,logistics,Device serial numbers are globally unique exact identifiers.
+vin_container,No,No,"WVWZZZ1JZXW000001 (VIN), MSKU1234567 (container)",Lexogram,REGEX,logistics,Vehicle and container identifiers are exact traceability keys.
+license_plate,No,No,B-QD 1234,Lexogram,REGEX,logistics,License plates are exact identifiers in vehicle-registry corpora.
+airport_airline_code,No,No,"BER (IATA), EDDB (ICAO), LH (airline)",Lexogram,REGEX,logistics,IATA / ICAO codes are exact institutional keys in travel and ATC corpora.
+aircraft_vessel_reg_like,No,No,"N12345, D-AIMA, IMO 9074729",Lexogram,REGEX,logistics,Tail-number / IMO / MMSI-shaped tokens. Assumptive (MODERATE): collides with protein mutation notation (N348I).
+customs_classification,No,No,"HS 090111, HTS 0901.11.00",Lexogram,REGEX,logistics,Tariff codes are exact administrative keys in trade and compliance corpora.
+hazmat_code,No,No,"UN1203, H225 (GHS)",Lexogram,REGEX,logistics,Hazardous material codes are exact regulatory keys — misidentification is a safety risk.
+material_grade,No,No,"AISI 304, 6061-T6, Ti-6Al-4V",Lexogram,REGEX,logistics,Material specification codes are exact engineering keys.
+nsn,No,No,1234-56-789-0123,Lexogram,REGEX,logistics,NATO Stock Numbers are exact supply-chain identifiers.
+sim_subscriber_id,No,No,"8901410321111851072 (ICCID), 310150123456789 (IMSI)",Lexogram,REGEX,logistics,SIM subscriber identifiers are PII — detection enables redaction.
+iso_code,No,No,"en-US (BCP-47), EUR (ISO 4217), DE (ISO 3166)",Lexogram,REGEX,media,Locale / currency / country codes are exact institutional keys.
+social_handle,No,No,"@qdrant_engine, #vectorsearch",Lexogram,REGEX,media,Social handles are exact user/topic keys in social-media corpora.
+academic_identifier,No,No,"10.1145/3539618 (DOI), 2104.08663 (arXiv), 978-3-16-148410-0 (ISBN)",Lexogram,REGEX,media,Academic publication identifiers are exact bibliographic keys.
+issn,No,No,2049-3630,Lexogram,REGEX,media,Serial publication IDs are exact journal keys.
+music_work_code,No,No,"USRC17607839 (ISRC), T-034.524.680-1 (ISWC)",Lexogram,REGEX,media,Music rights codes are exact work / recording identifiers.
+media_db_id,No,No,"tt0111161 (IMDb), nm0000138",Lexogram,REGEX,media,Film / person database identifiers are exact lookup keys.
+library_classification,No,No,"005.74 (Dewey), QA76.73.C15 (LoC)",Lexogram,REGEX,media,Library call numbers are exact shelf / catalogue keys.
+astronomical_designation,No,No,"NGC 224, M31, HD 209458, Kepler-186f",Lexogram,REGEX,media,Astronomical catalogue designations are exact object keys.
+Sentence Markers,,,,Parent,REGEX,,Closed-list lexical cues about query register. No span claim competition with identifiers — independent group.
+negation,No,Yes,"""laptops without touchscreen"", ""no CUDA support""",Lexogram,REGEX,sentence_markers,Negation is invisible to sparse bag-of-words. Markers: not · no · without · never · except · excluding. Dense embeddings can represent it; sparse cannot.
+acronym,No,No,"NY, N.Y., NASA, DNA (cased shape)",Lexogram,REGEX,sentence_markers,"Cased acronym shapes signal compressed identifier content. Lowercase forms (tv, dna) require model disambiguation — out of scope."
+comparative,No,Yes,"""faster than Python"", ""best database"", ""cheapest flights""",Lexogram,REGEX,sentence_markers,"Comparative / superlative constructs encode ranking semantics bag-of-words cannot capture. Irregulars and function words only (better, worst, more, than) — morphological -er/-est excluded as FP-prone."
+greeting,No,No,"""hi how do I set up Qdrant"", ""hello what is HNSW""",Lexogram,REGEX,sentence_markers,Pure retrieval noise; strong signal of conversational register → dense/hybrid preferred.
+politeness,No,No,"""please explain quantization"", ""could you help me find restaurants""",Lexogram,REGEX,sentence_markers,Filler tokens hurt sparse precision by matching documents containing these words. Signals NL/conversational phrasing → dense.
+interjection,No,No,"""wow how does HNSW work"", ""ugh my docker container keeps crashing""",Lexogram,REGEX,sentence_markers,Noise tokens dilute sparse signal. Presence indicates conversational register → dense/hybrid.
+Logical Structures,,,,Parent,REGEX,,Query-logic constructs and embedded formal grammars — all REGEX banks.
+operator_syntax,No,No,"""cats AND dogs"", ""java NOT javascript"", ""embedding OR vector""",Lexogram,REGEX,logical_structures,"Explicit boolean operators are retrieval commands — uppercase-gated, exact-match sparse is the correct mode. Lowercase and/or/not excluded (ordinary function words)."
+temporal,No,Yes,"""bitcoin price today"", ""3 days ago"", ""last quarter"", ""next sprint""",Lexogram,REGEX,logical_structures,Relative temporal expressions (closed-vocab regex). Absolute dates/quarters belong to Structured Identifiers (datetime · business_temporal); this bank covers the rest.
+code_fragment,No,No,"""why x != y in python"", ""SELECT id FROM users WHERE slow""",Lexogram,REGEX,logical_structures,Embedded programming-language grammar. Compound symbolic operators and name( call syntax are not attested search dialect — in a query they evidence code. Claims evidence tokens only; exact symbols are strong sparse signal (SPEC d20).
+math_expression,No,No,"""solve x^2 + y^2 = 25"", ""E = mc^2"", ""2+2""",Lexogram,REGEX,logical_structures,Embedded equation grammar — formal content where exact symbols matter (SPEC d20). Claims operand-operator-operand runs and = flanked by expressions; bare single-char operators never claimed.
+Statistical Metrics,,,,Parent,ALGO,,Scalar features per query — no span claims. Five router signals; each scalar answers one question the Strategy Router cares about.
+length,No,No,length_words=6 · length_chars=34,Lexogram,ALGO,statistical_metrics,Scalars: length_words (regex \w+ count) · length_chars. Very short queries give dense too little context → sparse-safe. Long queries carry enough signal for dense. REGEX engine — no model required.
+stopword_ratio,No,No,"stopword_ratio=0.50 (""the best restaurants in Berlin"") · 0.0 (""restaurant Berlin cheap"")",Lexogram,REGEX,statistical_metrics,"Scalars: stopword_ratio · stopword_count. REGEX fallback of natural_language_share — closed stopword list, no spaCy required. High = natural phrasing → dense; near-zero = keyword telegram → sparse."
+natural_language_signal,No,No,natural_language_share=0.476 (question) · 0.0 (CVE telegram),Lexogram,ALGO,statistical_metrics,Scalar: natural_language_share — fraction of tokens that are UD closed-class POS (ADP/AUX/CCONJ/DET/NUM/PART/PRON/SCONJ). Near 0 = keyword telegram → sparse; 0.4–0.5 = natural sentence → dense. Requires pinned spaCy model (en_core_web_sm).
+morphology,No,No,"word_variation_share=0.25 (""running dogs were found"") · 0.0 (""run dog find"")",Lexogram,ALGO,statistical_metrics,Scalar: word_variation_share — fraction of alpha tokens whose lemma ≠ surface form (running → run). Grammar-caused vocabulary mismatch risk: high → embeddings help; zero → BM25 safe. Requires pinned spaCy model.
+syntactic_depth,No,No,"nesting_depth=4 · statement_count=2 (""the paper that introduced attention, which was later adopted in GPT"")",Lexogram,ALGO,statistical_metrics,Scalars: nesting_depth (max dependency-tree depth) · statement_count (clausal dep count). Deep / multi-statement → dense or decompose+rerank. Read jointly with natural_language_share — parser hallucinates structure on non-sentences. Requires pinned spaCy model.
+coordination,No,No,"widest_list_size=3 (""boston, paris and tokyo"") · 0 (no coordination)",Lexogram,ALGO,statistical_metrics,Scalar: widest_list_size — how many equal parts does the longest and/or/comma chain string together? Wide-but-flat enumeration nesting_depth cannot see. Read jointly with natural_language_share. Requires pinned spaCy model.
+Query-Corpus,Yes,,,Parent,ALGO,,"Scalars a query only has against a collection — undefined without one, so the banks take a CorpusIndex (df counts + N + avgdl) next to the query and stay out of FEATURE_BANKS. Every member is scale-free on purpose: raw idf and raw doc counts rank queries inside one corpus and mislead across two."
+avg_idf,Yes,No,"avg_idf=0.62 (""cve-2024-3094 patch"" vs msmarco) · 0.28 (""what is a cell"" vs nfcorpus)",Lexogram,ALGO,query_corpus,"Scalar: avg_idf — mean normalized_idf (log-idf over the collection's own log(N+1) ceiling) of the query's BM25 tokens. High = the terms discriminate in THIS corpus, so sparse has something to grip. Normalized, not raw, so two collections compare."
+max_idf,Yes,No,max_idf=1.0 (one token absent from the index) · 0.31 (all terms common),Lexogram,ALGO,query_corpus,"Scalar: max_idf — rarity of the query's rarest term, same normalized scale. Read with avg_idf: one rare anchor in an otherwise common query (high max, low mean) is the exact-match case; uniformly common terms are not."
+oov_share,Yes,No,oov_share=0.33 (1 of 3 tokens unseen) · 0.0 (fully covered),Lexogram,ALGO,query_corpus,"Scalar: oov_share — share of query tokens with df=0. The hard half of vocabulary mismatch: BM25 cannot score a token the index never saw, leaving dense as the only route. A share, so corpus size drops out."
+collection_size,Yes,No,collection_size=5.08 (120K docs) · 3.56 (3.6K docs),Lexogram,ALGO,query_corpus,"Scalar: collection_size = log10(N+1). The collection-selection literature's first statistic (CORI/ReDDE) and the denominator the idf features normalize by. Log space so a 30x span is a 1.5-unit step, not a 116K one."
+avg_doc_length,Yes,No,avg_doc_length=1.81 (65-token passages) · 3.30 (2000-token records),Lexogram,ALGO,query_corpus,Scalar: avg_doc_length = log10(avgdl+1) in BM25 tokens. Where BM25's length normalization bites — a passage index and a long-record index reward different query shapes.
+vocab_overlap,Yes,No,"vocab_overlap=0.11 (common terms, dense corpus) · 0.0004 (specialist terms)",Lexogram,ALGO,query_corpus,"Scalar: vocab_overlap = mean(df/N) over query tokens — how much of the collection each term touches. The mass half of vocabulary mismatch: linear where avg_idf is logarithmic, so it is driven by the query's common terms, not its rare ones."
