@@ -167,7 +167,8 @@ class FilePathBank(IdentifierBank):
 
 
 class UUIDBank(IdentifierBank):
-    """Canonical 8-4-4-4-12 UUIDs, or bare 32-64 char hex digests (MD5/SHA-1/SHA-256)."""
+    """Canonical 8-4-4-4-12 UUIDs, or bare 32-64 char hex digests (MD5/SHA-1/SHA-256);
+    single-repeated-char runs (aaaa…) are padding artifacts, not digests, and rejected."""
 
     @property
     @override
@@ -189,6 +190,11 @@ class UUIDBank(IdentifierBank):
         return (
             builder
             .word_boundary()
+            .assert_not_ahead()
+                .capture().any_char().end()
+                .zero_or_more().back_reference(1)
+                .word_boundary()
+            .end()
             .any_of()
                 .group()
                     .exactly(8).subexpression(HEX_DIGIT).char("-")
