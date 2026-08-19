@@ -1,0 +1,66 @@
+{"text": "how to configure nginx reverse proxy", "languages": ["en"], "code_switched": false, "category": "sanity"}
+{"text": "wie installiere ich python auf ubuntu", "languages": ["de"], "code_switched": false, "category": "sanity"}
+{"text": "comment configurer un proxy inverse nginx", "languages": ["fr"], "code_switched": false, "category": "sanity"}
+{"text": "как настроить обратный прокси nginx", "languages": ["ru"], "code_switched": false, "category": "sanity"}
+{"text": "我想学习深度学习的基础知识", "languages": ["zh"], "code_switched": false, "category": "sanity"}
+{"text": "necesito help debugging my código", "languages": ["es", "en"], "code_switched": true, "category": "sanity"}
+{"text": "我想 deploy a vector database today", "languages": ["zh", "en"], "code_switched": true, "category": "sanity"}
+{"text": "je veux deploy this straight to production", "languages": ["fr", "en"], "code_switched": true, "category": "sanity", "note": "bare uninflected 'deploy'; contrast with the 'merger/pusher' line where -er morphology makes it a borrowing"}
+{"text": "looking for a kindergarten near berlin mitte", "languages": ["en"], "code_switched": false, "category": "loanword", "note": "naturalized german loan + place name; naive dictionary lookup flags 'kindergarten' as de"}
+{"text": "that outage gave me schadenfreude and déjà vu", "languages": ["en"], "code_switched": false, "category": "loanword", "note": "de and fr loanwords fully naturalized in en, incl. diacritics"}
+{"text": "je cherche un job dans le marketing digital", "languages": ["fr"], "code_switched": false, "category": "loanword", "note": "'job' and 'marketing' are established fr borrowings"}
+{"text": "el software de mi laptop no funciona", "languages": ["es"], "code_switched": false, "category": "loanword", "note": "'software'/'laptop' are RAE-sanctioned; two en-surface tokens, zero switching"}
+{"text": "gift ideas for a wine lover", "languages": ["en"], "code_switched": false, "category": "loanword", "note": "minimal pair with 'das gift war im wein'"}
+{"text": "mein handy wird beim laden extrem heiß", "languages": ["de"], "code_switched": false, "category": "pseudo_anglicism", "note": "'handy' = mobile phone, a de pseudo-anglicism that doesn't mean this in en; 'laden' = charging, also an en lookalike"}
+{"text": "der beamer im meetingraum zeigt kein bild", "languages": ["de"], "code_switched": false, "category": "pseudo_anglicism", "note": "'beamer' = projector in de, not en usage; 'meeting' established loan inside a compound"}
+{"text": "ich habe den branch gemergt und die pipeline getriggert", "languages": ["de"], "code_switched": false, "category": "anglicism_integrated", "note": "en roots with full de participle morphology (ge-...-t) => borrowing, not switch under integration policy; flip to true if you want surface-mixing semantics"}
+{"text": "kannst du das feature bis freitag deployen", "languages": ["de"], "code_switched": false, "category": "anglicism_integrated", "note": "de infinitive -en on en root"}
+{"text": "запушил хотфикс но тесты все равно падают", "languages": ["ru"], "code_switched": false, "category": "anglicism_integrated", "note": "cyrillicized en roots with ru inflection; fully ru orthography"}
+{"text": "надо задеплоить сервис до дедлайна", "languages": ["ru"], "code_switched": false, "category": "anglicism_integrated", "note": "contrast with the bare-latin 'deploy' line below"}
+{"text": "necesito debuggear el código otra vez", "languages": ["es"], "code_switched": false, "category": "anglicism_integrated", "note": "es -ear verbalization of en root"}
+{"text": "on va merger la branche et pusher les commits", "languages": ["fr"], "code_switched": false, "category": "anglicism_integrated", "note": "fr -er infinitives on en roots; standard fr dev register"}
+{"text": "ich muss das quickly fixen sonst eskaliert es", "languages": ["de", "en"], "code_switched": true, "category": "bare_switch", "note": "'fixen' is integrated, but 'quickly' is a bare en adverb => genuine switch; the discriminating token is the boring-looking one"}
+{"text": "die anfrage war successful aber langsam", "languages": ["de", "en"], "code_switched": true, "category": "bare_switch", "note": "single bare en adjective in de matrix"}
+{"text": "надо срочно deploy сервис на прод", "languages": ["ru", "en"], "code_switched": true, "category": "bare_switch", "note": "bare latin 'deploy' vs 'задеплоить' above; same lexeme, opposite label"}
+{"text": "почему мой запрос timed out после минуты", "languages": ["ru", "en"], "code_switched": true, "category": "bare_switch", "note": "uninflected en verb phrase inside ru"}
+{"text": "el deploy failed otra vez en producción", "languages": ["es", "en"], "code_switched": true, "category": "bare_switch", "note": "'failed' is a bare en verb; 'el deploy' alone would arguably be a borrowed noun"}
+{"text": "le bug est dans the payment module", "languages": ["fr", "en"], "code_switched": true, "category": "bare_switch", "note": "en determiner phrase; 'bug' itself is established fr"}
+{"text": "wie richte ich visual studio code für rust ein", "languages": ["de"], "code_switched": false, "category": "named_entity", "note": "multiword en product name; 3 consecutive en tokens, still monolingual de"}
+{"text": "почему stack overflow заблокировал мой вопрос", "languages": ["ru"], "code_switched": false, "category": "named_entity"}
+{"text": "如何在ubuntu服务器上安装docker和kubernetes", "languages": ["zh"], "code_switched": false, "category": "named_entity", "note": "latin NEs inside zh; script mixing != code-switching"}
+{"text": "est-ce que github copilot fonctionne hors ligne", "languages": ["fr"], "code_switched": false, "category": "named_entity"}
+{"text": "كيف أستخدم python في تحليل البيانات", "languages": ["ar"], "code_switched": false, "category": "named_entity"}
+{"text": "warum wirft pandas.read_csv einen unicodedecodeerror", "languages": ["de"], "code_switched": false, "category": "code_artifact", "note": "identifiers and exception names are code tokens, not en prose"}
+{"text": "git rebase --interactive не работает как ожидалось", "languages": ["ru"], "code_switched": false, "category": "code_artifact", "note": "verbatim command string = artifact"}
+{"text": "为什么npm install --force还是报错", "languages": ["zh"], "code_switched": false, "category": "code_artifact"}
+{"text": "select * from users where active = true läuft ewig", "languages": ["de"], "code_switched": false, "category": "code_artifact", "note": "sql keywords are en-derived but code"}
+{"text": "что означает err_connection_refused в логах nginx", "languages": ["ru"], "code_switched": false, "category": "code_artifact", "note": "screaming-case constant = artifact; contrast with the quoted_error lines"}
+{"text": "браузер пишет connection refused что делать", "languages": ["ru", "en"], "code_switched": true, "category": "quoted_error", "note": "lowercase verbatim en error message = quotational switch; the constant/message boundary is a deliberate policy line"}
+{"text": "comment corriger segmentation fault core dumped en c", "languages": ["fr", "en"], "code_switched": true, "category": "quoted_error", "note": "verbatim os message quoted inside fr"}
+{"text": "die hat was", "languages": ["de"], "code_switched": false, "category": "ambiguous_overlap", "note": "every token is also an en word; token-voting detectors flag this as en or mixed"}
+{"text": "das gift war im wein", "languages": ["de"], "code_switched": false, "category": "ambiguous_overlap", "note": "gift = poison; false friend, pairs with 'gift ideas' line"}
+{"text": "mist die rate war zu hoch", "languages": ["de"], "code_switched": false, "category": "ambiguous_overlap", "note": "mist/rate/war all collide with en surface forms"}
+{"text": "war das ein bug im alten code", "languages": ["de"], "code_switched": false, "category": "ambiguous_overlap", "note": "'war' (de past of sein) collides with en 'war'; bug/code are established de loans"}
+{"text": "el chat no responde a mi mensaje", "languages": ["es"], "code_switched": false, "category": "ambiguous_overlap", "note": "'chat' naturalized in es; 'no'/'chat' also valid en tokens"}
+{"text": "kak ustanovit docker na ubuntu", "languages": ["ru"], "code_switched": false, "category": "transliteration", "note": "fully transliterated ru in latin script, only NEs are en-origin; script-based ID fails hard here"}
+{"text": "privet mozhesh posmotret moi pull request", "languages": ["ru", "en"], "code_switched": true, "category": "transliteration", "note": "translit ru + en noun phrase, zero cyrillic"}
+{"text": "zenme yong python chuli zhege wenti", "languages": ["zh"], "code_switched": false, "category": "transliteration", "note": "pinyin zh + NE; no han characters"}
+{"text": "wo de code yizhi baocuo help me kan yixia", "languages": ["zh", "en"], "code_switched": true, "category": "transliteration", "note": "pinyin matrix with bare en fragments"}
+{"text": "kifak ya jamil shu akhbar el mashrou3", "languages": ["ar"], "code_switched": false, "category": "transliteration", "note": "levantine arabizi with numeral orthography (3 = ع); monolingual despite latin script"}
+{"text": "el code kolo bayez lazem refactor men el awal", "languages": ["ar", "en"], "code_switched": true, "category": "transliteration", "note": "egyptian arabizi + bare en nouns; 'el' is the arabic article, not spanish"}
+{"text": "الserver مش شغال من امبارح", "languages": ["ar", "en"], "code_switched": true, "category": "intra_word", "note": "ar definite article ال prefixed directly onto a latin token; switch inside a single token, mixed scripts in one word"}
+{"text": "die downloadgeschwindigkeit ist heute unterirdisch", "languages": ["de"], "code_switched": false, "category": "intra_word", "note": "en root inside de compound => borrowing"}
+{"text": "can you whatsapp me the zusammenfassung", "languages": ["en", "de"], "code_switched": true, "category": "intra_word", "note": "verbed NE stays en; bare de noun is the switch"}
+{"text": "the build failed again verdammt noch mal", "languages": ["en", "de"], "code_switched": true, "category": "tag_switch"}
+{"text": "merci beaucoup, that solved my issue", "languages": ["fr", "en"], "code_switched": true, "category": "tag_switch"}
+{"text": "тесты прошли, anyway надо проверить логи", "languages": ["ru", "en"], "code_switched": true, "category": "tag_switch", "note": "single en discourse marker; minimal switched surface"}
+{"text": "el servidor no responde desde ayer. can you check the logs", "languages": ["es", "en"], "code_switched": true, "category": "inter_sentential"}
+{"text": "ich habe alles neu installiert. still the same error", "languages": ["de", "en"], "code_switched": true, "category": "inter_sentential"}
+{"text": "请先备份数据库。then run the migration script", "languages": ["zh", "en"], "code_switched": true, "category": "inter_sentential"}
+{"text": "por favor help me с этой проблемой", "languages": ["es", "en", "ru"], "code_switched": true, "category": "trilingual", "note": "three scripts would be nicer but two is already rare enough"}
+{"text": "das update ist fertig, enfin let's ship it", "languages": ["de", "fr", "en"], "code_switched": true, "category": "trilingual", "note": "'update' is an established de loan; 'enfin' is the fr tag"}
+{"text": "ok danke", "languages": ["de"], "code_switched": false, "category": "short_query", "note": "'ok' is language-neutral; effectively one real token of signal"}
+{"text": "merci bye", "languages": ["fr", "en"], "code_switched": true, "category": "short_query", "note": "contentious by design: 'bye' is widely borrowed into fr; flips to false under a loose borrowing policy"}
+{"text": "0x80070005 err_access_denied 500", "languages": ["und"], "code_switched": false, "category": "undetermined", "note": "original set labeled a similar line en; recommend und (bcp-47) or an explicit abstain policy"}
+{"text": "hotel restaurant information", "languages": ["und"], "code_switched": false, "category": "undetermined", "note": "every token valid in en/de/fr simultaneously; no decidable answer"}
+{"text": "ok ok lol 404", "languages": ["und"], "code_switched": false, "category": "undetermined", "note": "internet-neutral tokens only"}

@@ -108,21 +108,26 @@ class QueryFeatures(BaseModel):
 
     @computed_field
     @property
-    def language_set(self) -> list[str]:
-        """Derived view: distinct languages across the segmentation, in order."""
+    def language_set(self) -> list[str] | None:
+        """Distinct languages across the segmentation; None if the segmentation
+        bank did not run (e.g. regex-only) — distinct from a measured result."""
+        if FeatureGroup.SEMANTICAL not in self.segments:
+            return None
         return list(dict.fromkeys(s.language for s in self._language_spans))
 
     @computed_field
     @property
-    def language_count(self) -> int:
-        """Derived view: number of distinct languages present."""
-        return len(self.language_set)
+    def language_count(self) -> int | None:
+        """Number of distinct languages present, or None if not measured."""
+        languages = self.language_set
+        return None if languages is None else len(languages)
 
     @computed_field
     @property
-    def is_code_switched(self) -> bool:
-        """Derived view: two or more languages present (mechanical only)."""
-        return self.language_count >= 2
+    def is_code_switched(self) -> bool | None:
+        """Two or more languages present (mechanical only), or None if not measured."""
+        languages = self.language_set
+        return None if languages is None else len(languages) >= 2
 
 
 class CorpusFeatures(BaseModel):

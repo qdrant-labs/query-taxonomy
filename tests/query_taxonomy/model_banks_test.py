@@ -236,15 +236,27 @@ class TestTypoBank:
 
 @pytest.fixture(scope="module")
 def segmentation_bank():
-    pytest.importorskip("lingua")
+    pytest.importorskip("wordfreq")
     from query_taxonomy.semantical import SegmentationBank
 
     return SegmentationBank()
 
 
 class TestSegmentationBank:
+    def _langs(self, bank, text):
+        return [s.language for s in bank.compute(text)]
+
     def test_monolingual_english_single_span(self, segmentation_bank):
-        assert [s.language for s in segmentation_bank.compute("best vector database")] == ["en"]
+        assert self._langs(segmentation_bank, "best vector database") == ["en"]
+
+    def test_detects_latin_latin_single_word(self, segmentation_bank):
+        # the case lingua structurally could not do: a lone Latin foreign word
+        langs = {s.language for s in segmentation_bank.compute("the fichier is missing")}
+        assert langs == {"en", "fr"}
+
+    def test_carrier_flips_to_dominant_language(self, segmentation_bank):
+        # a mostly-German query: carrier is de, not en
+        assert self._langs(segmentation_bank, "der server ist kaputt heute") == ["de"]
 
     def test_detects_nonlatin_code_switch(self, segmentation_bank):
         langs = {
@@ -255,22 +267,21 @@ class TestSegmentationBank:
         }
         assert "ru" in langs and "en" in langs
 
-    def test_letterless_query_defaults_english(self, segmentation_bank):
-        # numbers/identifiers are not language; lingua would hallucinate one
-        assert [s.language for s in segmentation_bank.compute("12345 0x1f")] == ["en"]
+    def test_letterless_query_defaults_carrier(self, segmentation_bank):
+        # numbers/identifiers are not language -> carrier (English-dominant)
+        assert self._langs(segmentation_bank, "12345 0x1f") == ["en"]
 
     def test_empty_emits_nothing(self, segmentation_bank):
         assert segmentation_bank.compute("") == []
 
     def test_code_heavy_english_not_a_false_switch(self, segmentation_bank):
-        # regression: en<->Latin confusion sprayed it/fr/de over English lanes
-        # (measured 9-98%); the en + non-Latin default keeps this English
-        assert [s.language for s in segmentation_bank.compute("0x80070005 error code")] == ["en"]
+        # OOV code tokens must not switch off the carrier (target-floor guard)
+        assert self._langs(segmentation_bank, "0x80070005 error code rviz colcon") == ["en"]
 
 
 @pytest.fixture(scope="module")
 def langid_extractor():
-    pytest.importorskip("lingua")
+    pytest.importorskip("wordfreq")
     from query_taxonomy.core import Engine
     from query_taxonomy.features import FeatureExtractor
 
@@ -295,5 +306,39 @@ class TestSemanticalDerivedViews:
             "привет мир today I deploy a vector database on my server",
         )
         assert "ru" in f.language_set and "en" in f.language_set
-        assert f.language_count >= 2
         assert f.is_code_switched is True
+
+    def test_derived_views_none_when_not_measured(self):
+        # default extractor is regex-only -> the LANGID bank never ran, so the
+        # derived views are None (not a false is_code_switched=False)
+        from query_taxonomy.features import FeatureExtractor
+
+        f = FeatureExtractor().resolve("привет мир this is clearly code-switched")
+        assert f.language_set is None
+        assert f.language_count is None
+        assert f.is_code_switched is None
+
+
+class TestCodeSwitchEval:
+    """Falsifiability gate: the hand-authored, wordfreq-independent eval. These
+    thresholds sit just under the calibrated point (csP 0.94 / csR 0.83 / set 0.90)."""
+
+    def test_meets_calibrated_thresholds(self, segmentation_bank):
+        import json
+        from pathlib import Path
+
+        path = Path(__file__).parents[2] / "eval" / "codeswitch_queries.jsonl"
+        rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+        tp = fp = fn = set_hit = 0
+        for row in rows:
+            pred = sorted({s.language for s in segmentation_bank.compute(row["text"])})
+            pred_cs, gold_cs = len(pred) >= 2, row["code_switched"]
+            tp += pred_cs and gold_cs
+            fp += pred_cs and not gold_cs
+            fn += (not pred_cs) and gold_cs
+            set_hit += pred == row["languages"]
+        precision = tp / (tp + fp) if tp + fp else 1.0
+        recall = tp / (tp + fn) if tp + fn else 1.0
+        assert precision >= 0.88, precision
+        assert recall >= 0.75, recall
+        assert set_hit / len(rows) >= 0.82, set_hit / len(rows)

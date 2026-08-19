@@ -557,18 +557,17 @@ class QueryCorpusFeature(StrEnum):
 
 class SemanticFeature(StrEnum):
     """
-    Semantical group: cross-lingual properties. Method: LANGID (lingua, SPEC
-    d18 / docs/adr/0002). One span-emitting bank detects LANGUAGE_SEGMENTATION;
-    LANGUAGE_SET and CODE_SWITCHING are derived views over its LanguageSpans,
-    not separate banks.
+    Semantical group: cross-lingual properties over the LANGID engine. One
+    span-emitting bank detects LANGUAGE_SEGMENTATION; LANGUAGE_SET and
+    CODE_SWITCHING are derived views over its LanguageSpans, not separate banks.
     """
 
     LANGUAGE_SEGMENTATION = "language_segmentation"
-    """The bank's output: contiguous single-language spans over the query
-    (LanguageSpan, BCP-47 code each), from lingua's detect_multiple_languages.
-    Reliable when each language holds a real run; a lone embedded foreign word
-    in a short query is not segmented (SPEC M2). A letterless query (numbers,
-    identifiers) and a low-confidence short query default to one 'en' span."""
+    """Contiguous single-language spans over the query (a LanguageSpan per run,
+    BCP-47 each): Unicode script sets non-Latin tokens, the query's carrier
+    language sets Latin tokens unless a word is decisively more frequent in
+    another. Numbers, identifiers, and OOV tokens stay carrier, so a monolingual
+    query is one span."""
 
     LANGUAGE_SET = "language_set"
     """Derived view: the distinct languages across the segmentation, plus
@@ -577,7 +576,7 @@ class SemanticFeature(StrEnum):
     CODE_SWITCHING = "code_switching"
     """Derived view: is_code_switched = language_count >= 2. The mechanical
     signal only — the "natural, culturally embedded" nuance (Moldavian Romanian
-    with Russian jargon) is not detectable and is out of scope (SPEC M2)."""
+    with Russian jargon) is not detectable and is out of scope."""
 
 
 RELEVANCE_CHANGING: frozenset[str] = frozenset({
