@@ -12,10 +12,12 @@ from query_taxonomy.taxonomy import StatisticalMetric
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-RARE_ZIPF_MAX = 3.0
-"""Zipf cutoff below which a known term counts as rare — a placeholder pending
-calibration against the query-set Zipf distribution (see TODOS). Zipf 3.0 is
-~one occurrence per million words."""
+RARE_ZIPF_MAX = 3.5
+"""Zipf cutoff below which a known term counts as rare. Calibrated to the knee
+(~10th percentile) of the pooled query-term Zipf distribution over the cached
+lanes: scripts/zipf_calibration.py, 2026-08-19. Below it the rare tail thins
+out; rare_share averages ~0.09. Overridable per registration via the
+(type, kwargs) registry entry in __init__.py."""
 
 
 @lru_cache(maxsize=1)

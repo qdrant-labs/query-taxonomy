@@ -7,7 +7,7 @@ from query_taxonomy.logical import LOGICAL_BANKS
 from query_taxonomy.markers import MARKER_BANKS
 from query_taxonomy.metrics import METRIC_BANKS
 from query_taxonomy.metrics.fragmentation import FragmentationBank
-from query_taxonomy.metrics.frequency import RarityBank
+from query_taxonomy.metrics.frequency import RARE_ZIPF_MAX, RarityBank
 from query_taxonomy.metrics.pos import (
     CoordinationBank,
     MorphologyBank,
@@ -22,6 +22,15 @@ from query_taxonomy.taxonomy import FeatureGroup
 # the spaCy StatBank["Language"] specialization.
 Bank = GeneralBank[Any, Any]
 BankTypes = type[Bank]
+# A registry entry is a bank type, or a (type, kwargs) pair for banks whose
+# calibrated constants are injected at construction. Engine still reads off the
+# type BEFORE instantiation, so regex-only stays import-light.
+BankSpec = BankTypes | tuple[BankTypes, dict[str, Any]]
+
+
+def split_bank(spec: BankSpec) -> tuple[BankTypes, dict[str, Any]]:
+    """Normalize a registry entry to (type, kwargs) so callers instantiate uniformly."""
+    return spec if isinstance(spec, tuple) else (spec, {})
 
 # ALL banks of every engine live here — model-engine banks import their
 # heavy dependencies lazily (at instantiation), so this registry stays
@@ -40,10 +49,10 @@ FEATURE_BANKS = {
         MorphologyBank,
         SyntacticDepthBank,
         CoordinationBank,
-        RarityBank,
+        (RarityBank, {"rare_zipf_max": RARE_ZIPF_MAX}),
         FragmentationBank,
     ),
     FeatureGroup.CORRUPTION: CORRUPTION_BANKS,
 }
 
-__all__ = ["FEATURE_BANKS", "Bank", "BankTypes", "Engine"]
+__all__ = ["FEATURE_BANKS", "Bank", "BankSpec", "BankTypes", "Engine", "split_bank"]

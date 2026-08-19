@@ -8,7 +8,7 @@ from enum import StrEnum
 
 import pytest
 
-from query_taxonomy import FEATURE_BANKS
+from query_taxonomy import FEATURE_BANKS, split_bank
 from query_taxonomy.banks import BANKS, StructuralIdentifier
 from query_taxonomy.core import Engine, StatBank
 from query_taxonomy.corpus_relative import (
@@ -31,7 +31,7 @@ from query_taxonomy.taxonomy import (
 _BANKS = {
     cls().name: cls()
     for group_banks in FEATURE_BANKS.values()
-    for cls in group_banks
+    for cls, _kwargs in (split_bank(spec) for spec in group_banks)
     if cls.engine is Engine.REGEX
 }
 

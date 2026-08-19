@@ -215,3 +215,20 @@ class TestTypoBank:
     def test_ignores_short_tokens(self, typo_bank):
         # a single OOV letter is one edit from 'a'/'i' but too short to judge
         assert typo_bank.compute("q z x") == []
+
+    def test_case_guard_ignores_code_identifiers(self, typo_bank):
+        # census false positives: internal caps -> camelCase/PascalCase code,
+        # not a slip. One edit from a frequent word but never a typo.
+        for token in ("asList", "resolveA", "dataA", "TypeId"):
+            assert typo_bank.compute(token) == [], token
+
+    def test_still_flags_real_typos_from_census(self, typo_bank):
+        # the real misspellings the census surfaced, drowned by the FPs above
+        for token in ("implemeted", "sequnece", "smalest", "algebric", "operato"):
+            assert [s.text for s in typo_bank.compute(token)] == [token], token
+
+    def test_accepted_floor_lowercase_jargon_still_fires(self, typo_bank):
+        # documented ceiling: all-lowercase domain jargon one edit from a common
+        # word (pthread->thread) is indistinguishable from a slip within-group,
+        # so it stays flagged. Read the lane rate, not the per-span claim.
+        assert typo_bank.compute("pthread colcon stdio")

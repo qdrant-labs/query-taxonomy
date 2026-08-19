@@ -33,8 +33,12 @@ _MAX_TYPO_LEN = 25
 """Above this, no frequent word is one edit away — a long all-letter token is
 a hash or slug, not a typo — so skip the wasted _edits1 candidate generation."""
 FREQUENT_ZIPF = 3.0
-"""A plausible typo target must be at least this common (~1 per million) —
-placeholder pending calibration, see TODOS."""
+"""A plausible typo target must be at least this common (~1 per million). A
+precision/recall sweep over the corruption census (2026-08-19) confirmed 3.0:
+raising it trades typo recall away for almost no false-positive drop on the
+technical lanes, because those FPs are lowercase domain jargon one edit from a
+very common word (pthread -> thread), which no threshold can reach. Overridable
+per registration via TypoBank's frequent_zipf kwarg."""
 
 
 @lru_cache(maxsize=1)
@@ -92,9 +96,16 @@ class TypoBank(GeneralBank[FeatureSpan, str]):
     """Keyword-adjacent misspellings: a word-shaped token absent from the
     table yet within one edit of a frequent word. Spans, so each typo is
     located. Rare-real words and names are absent but NOT near a frequent
-    word, so they are left alone."""
+    word, so they are left alone. A residual floor of all-lowercase domain
+    jargon (pthread, colcon) survives: within-group there is no signal that
+    separates it from a real slip, so read the lane rate, not the per-span
+    claim (see the corruption census)."""
 
     engine = Engine.WORDFREQ
+
+    def __init__(self, frequent_zipf: float = FREQUENT_ZIPF) -> None:
+        super().__init__()
+        self._frequent_zipf = frequent_zipf
 
     @property
     @override
@@ -115,17 +126,22 @@ class TypoBank(GeneralBank[FeatureSpan, str]):
     def define(self, builder: str) -> str:
         return builder
 
-    def _is_typo(self, lower: str) -> bool:
+    def _is_typo(self, token: str) -> bool:
+        if any(char.isupper() for char in token[1:]):
+            return False  # internal caps -> camelCase/PascalCase code identifier
+        lower = token.lower()
         if not _MIN_TYPO_LEN <= len(lower) <= _MAX_TYPO_LEN:
             return False  # too short to judge, or too long to be a misspelling
         if _zipf()(lower, _LANG) > 0.0:
             return False  # a known word (incl. common misspellings in the table)
-        return any(_zipf()(cand, _LANG) >= FREQUENT_ZIPF for cand in _edits1(lower))
+        return any(
+            _zipf()(cand, _LANG) >= self._frequent_zipf for cand in _edits1(lower)
+        )
 
     @override
     def compute(self, text: str) -> list[FeatureSpan]:
         return [
             FeatureSpan(match.group(0), match.start(), match.end())
             for match in _WORD.finditer(text)
-            if self._is_typo(match.group(0).lower())
+            if self._is_typo(match.group(0))
         ]

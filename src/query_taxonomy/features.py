@@ -4,7 +4,7 @@ from functools import cached_property
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
-from query_taxonomy import FEATURE_BANKS, Bank, BankTypes
+from query_taxonomy import FEATURE_BANKS, Bank, BankSpec, split_bank
 from query_taxonomy.core import Engine, FeatureSpan, FeatureStat
 from query_taxonomy.taxonomy import FeatureGroup
 
@@ -118,7 +118,7 @@ class FeatureExtractor:
 
     def __init__(
         self,
-        banks: Mapping[FeatureGroup, Iterable[BankTypes]] = FEATURE_BANKS,
+        banks: Mapping[FeatureGroup, Iterable[BankSpec]] = FEATURE_BANKS,
         *,
         engines: Engine | Iterable[Engine] | None = (Engine.REGEX,),
     ) -> None:
@@ -133,14 +133,16 @@ class FeatureExtractor:
         selected = None if engines is None else set(engines)
         self._by_group: dict[FeatureGroup, list[Bank]] = {}
         for group, classes in banks.items():
+            specs = [split_bank(spec) for spec in classes]
             picked = [
-                cls
-                for cls in classes
+                (cls, kwargs)
+                for cls, kwargs in specs
                 if selected is None or cls.engine in selected
             ]
             # stable sort -> registration order breaks ties within a tier
             instances = sorted(
-                (cls() for cls in picked), key=lambda bank: bank.ambiguity
+                (cls(**kwargs) for cls, kwargs in picked),
+                key=lambda bank: bank.ambiguity,
             )
             for bank in instances:
                 if bank.group is not group:
