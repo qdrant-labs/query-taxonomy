@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import override
 
 from query_taxonomy.core import FeatureGroup, FeatureStat, GeneralBank
@@ -9,9 +9,9 @@ from query_taxonomy.taxonomy import QueryCorpusFeature
 
 @dataclass(frozen=True, slots=True)
 class CorpusIndex:
-    """The three collection statistics every Query-Corpus bank reads.
-    Stdlib only, by design: whoever owns the corpus (parquet, a live
-    collection, a fixture dict) counts it and hands the counts over."""
+    """The collection statistics every Query-Corpus bank reads. Stdlib only,
+    by design: whoever owns the corpus (parquet, a live collection, a fixture
+    dict) counts it and hands the counts over."""
 
     document_frequencies: Mapping[str, int]
     """Token -> number of documents containing it, in the SAME tokenization
@@ -20,9 +20,18 @@ class CorpusIndex:
     n_docs: int
     avgdl: float
     """Mean document length in tokens — BM25's length-normalization term."""
+    pair_document_frequencies: Mapping[frozenset[str], int] = field(
+        default_factory=dict
+    )
+    """{token_a, token_b} -> documents containing BOTH, for PMI. Precomputed
+    by the corpus owner for the query set's pairs only (bounded by
+    queries x pairs-per-query, never O(vocab^2)); empty when PMI is unused."""
 
     def df(self, token: str) -> int:
         return self.document_frequencies.get(token, 0)
+
+    def pair_df(self, a: str, b: str) -> int:
+        return self.pair_document_frequencies.get(frozenset((a, b)), 0)
 
 
 class CorpusRelativeBank(GeneralBank[FeatureStat, CorpusIndex], ABC):

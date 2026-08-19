@@ -394,13 +394,38 @@ class LogicalStructure(StrEnum):
 
 class CorruptionKind(StrEnum):
     """
-    Corruption group: text-damage signals. Method: REGEX for artifacts;
-    typo/noise features are ALGO/MODEL and deferred.
+    Corruption group: text-damage detectors. Method: REGEX for artifacts
+    (encoding, truncation, paste residue); WORDFREQ for the lexicon signals
+    (unknown-token rate, keyword-adjacent typos). Word-order noise and
+    identifier corruption have NO detector — not query-locally measurable;
+    their damage lands on other groups' features (SPEC C6).
     """
 
     ENCODING_ARTIFACT = "encoding_artifact"
     """Encoding junk — mojibake digraphs (â€™, Ã©), U+FFFD replacement char.
     Matches mid-word: artifacts ignore word boundaries."""
+
+    TRUNCATION = "truncation"
+    """A query cut off at the end — a trailing ellipsis (… or ...), with any
+    glued partial word claimed too so it never double-counts as a typo. The
+    detectable truncation signature; a mid-word cut with no marker is not
+    query-locally distinguishable and is left undetected."""
+
+    PASTE_RESIDUE = "paste_residue"
+    """Copy-paste leftovers — HTML tags (<b>, </div>) and numeric citation
+    brackets ([12]) that rode along from a source document into the query."""
+
+    UNKNOWN_TOKEN_RATE = "unknown_token_rate"
+    """Share of a query's word-shaped tokens absent from the frequency table
+    (a stat, not spans). Digits/identifiers are excluded by the word-shape
+    guard. Distinct from term_rarity's rare_share (below a threshold but
+    KNOWN); this is entirely absent."""
+
+    TYPO = "typo"
+    """Keyword-adjacent misspellings — a word-shaped token absent from the
+    table yet within one edit of a frequent word (confgure -> configure).
+    Spans, so each typo is located. Excludes rare-real words and names, which
+    are absent but NOT near a frequent word."""
 
 
 class StatisticalMetric(StrEnum):
@@ -456,6 +481,22 @@ class StatisticalMetric(StrEnum):
     scalar per its doctrine). Parser output: read jointly with
     natural_language_share, like nesting_depth."""
 
+    TERM_RARITY = "term_rarity"
+    """How globally rare are the query's terms? — min_zipf (rarest term, the
+    sparse exact-match anchor), mean_zipf (overall commonness), rare_share
+    (fraction below a rarity cutoff), over the wordfreq 'en' table. Global
+    frequency, NOT this corpus (that is avg_idf/max_idf): a term can be
+    globally rare yet common here. Counts only KNOWN terms; a term absent from
+    the table is the corruption group's unknown_token_rate, so read the two
+    jointly."""
+
+    SUBWORD_FRAGMENTATION = "subword_fragmentation"
+    """How badly do the query's words shatter into subword pieces? —
+    mean_pieces_per_word, max_pieces_per_word over a pinned WordPiece vocab.
+    A clean word is one piece; a rare or misspelled word breaks into several,
+    which is where a dense model sees debris rather than a concept. The extreme
+    is the single most-shattered token, the rare-technical-term anchor."""
+
 
 class QueryCorpusFeature(StrEnum):
     """
@@ -502,6 +543,16 @@ class QueryCorpusFeature(StrEnum):
     vocab_overlap = mean(df / N). The mass half of vocabulary mismatch,
     dominated by the query's COMMON terms where avg_idf is dominated by its
     rare ones; oov_share is the set-membership half."""
+
+    PMI = "pmi"
+    """Do the query's terms actually belong together in this collection? —
+    mean_pmi, min_pmi over the query's term pairs, as normalized PMI in
+    [-1, 1] (kept scale-free like the rest of the group; raw PMI grows with
+    N). +1 = the pair always co-occurs, 0 = independent, -1 = never together.
+    min_pmi is the least-collocated pair — the unusual word combination a
+    dense model may smooth away. Document-level co-occurrence from
+    pair_document_frequencies; pairs with an out-of-collection term are
+    skipped (that is oov_share's concern)."""
 
 
 class SemanticFeature(StrEnum):

@@ -2,9 +2,12 @@ from typing import Any
 
 from query_taxonomy.banks import BANKS
 from query_taxonomy.core import Engine, GeneralBank
+from query_taxonomy.corruption import CORRUPTION_BANKS
 from query_taxonomy.logical import LOGICAL_BANKS
 from query_taxonomy.markers import MARKER_BANKS
 from query_taxonomy.metrics import METRIC_BANKS
+from query_taxonomy.metrics.fragmentation import FragmentationBank
+from query_taxonomy.metrics.frequency import RarityBank
 from query_taxonomy.metrics.pos import (
     CoordinationBank,
     MorphologyBank,
@@ -37,7 +40,10 @@ FEATURE_BANKS = {
         MorphologyBank,
         SyntacticDepthBank,
         CoordinationBank,
+        RarityBank,
+        FragmentationBank,
     ),
+    FeatureGroup.CORRUPTION: CORRUPTION_BANKS,
 }
 
 __all__ = ["FEATURE_BANKS", "Bank", "BankTypes", "Engine"]

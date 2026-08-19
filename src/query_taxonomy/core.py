@@ -16,6 +16,8 @@ class Engine(StrEnum):
 
     REGEX = "regex"
     SPACY = "spacy_model"
+    WORDFREQ = "wordfreq"
+    TOKENIZER = "tokenizer"
 
 
 class FeatureSpan(NamedTuple):
