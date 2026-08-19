@@ -11,10 +11,16 @@ import pytest
 from query_taxonomy import FEATURE_BANKS
 from query_taxonomy.banks import BANKS, StructuralIdentifier
 from query_taxonomy.core import Engine, StatBank
-from query_taxonomy.corpus_relative import CORPUS_RELATIVE_BANKS, CorpusIndex
+from query_taxonomy.corpus_relative import (
+    CORPUS_RELATIVE_BANKS,
+    CorpusIndex,
+    CorpusRelativeExtractor,
+    PMIBank,
+)
 from query_taxonomy.features import FeatureExtractor, normalized_idf
 from query_taxonomy.metrics import LengthBank, StopwordRatioBank
 from query_taxonomy.taxonomy import (
+    CorruptionKind,
     FeatureGroup,
     LogicalStructure,
     SentenceMarker,
@@ -390,6 +396,25 @@ CASES: dict[StrEnum, tuple[list[str], list[str]]] = {
         ["Q3 2026", "FY25"],
         ["Q5 2026", "FY"],
     ),
+    CorruptionKind.ENCODING_ARTIFACT: (
+        ["cafÃ© near me", "a bad � char"],
+        ["a normal cafe query", "plain ascii text only"],
+    ),
+    CorruptionKind.TRUNCATION: (
+        ["how to configure ngin...", "the answer is…"],
+        # regression: a bare ellipsis is a code template's placeholder body,
+        # not a cut query — it was 96% of bright-pony's census hits
+        [
+            "wait... what is this",
+            "a complete question here",
+            "fun isPrime(num: USize): bool =>\n...",
+        ],
+    ),
+    CorruptionKind.PASTE_RESIDUE: (
+        ["see <div>content</div>", "reference [12] here"],
+        # regression: generics and array indices must NOT read as paste
+        ["List<int> generic type", "array[0] index access"],
+    ),
 }
 
 
@@ -510,3 +535,91 @@ def test_corpus_relative_banks_empty_query() -> None:
     assert stats["max_idf"] == 0.0
     assert stats["oov_share"] == 0.0
     assert stats["vocab_overlap"] == 0.0
+
+
+# a,b always co-occur (df 5, together in all 5); a,c and b,c never co-occur.
+_PMI_INDEX = CorpusIndex(
+    document_frequencies={"a": 5, "b": 5, "c": 5},
+    n_docs=10,
+    avgdl=3.0,
+    pair_document_frequencies={frozenset(("a", "b")): 5},
+)
+
+
+def test_pmi_perfect_collocation() -> None:
+    stats = {s.name: s.value for s in PMIBank(_PMI_INDEX).compute(["a", "b"])}
+    assert stats["mean_pmi"] == pytest.approx(1.0)
+    assert stats["min_pmi"] == pytest.approx(1.0)
+
+
+def test_pmi_negative_for_never_together() -> None:
+    stats = {s.name: s.value for s in PMIBank(_PMI_INDEX).compute(["a", "c"])}
+    assert stats["min_pmi"] < 0.0
+
+
+def test_pmi_min_is_the_least_collocated_pair() -> None:
+    stats = {
+        s.name: s.value for s in PMIBank(_PMI_INDEX).compute(["a", "b", "c"])
+    }
+    # a,b co-occur (+1); a,c and b,c never (negative) -> min is negative, mean between
+    assert stats["min_pmi"] < 0.0
+    assert stats["min_pmi"] <= stats["mean_pmi"] <= 1.0
+
+
+def test_pmi_skips_oov_and_short_queries() -> None:
+    # a single token has no pairs; an out-of-collection term is skipped ->
+    # nothing scorable -> emit nothing, not a fabricated 0.0 (== "independent")
+    assert PMIBank(_PMI_INDEX).compute(["a"]) == []
+    assert PMIBank(_PMI_INDEX).compute(["a", "zzz"]) == []
+
+
+def test_pmi_unmeasured_when_no_pair_counts() -> None:
+    # _INDEX carries no pair_document_frequencies -> PMI is unmeasured, absent
+    assert PMIBank(_INDEX).compute(["vector", "hnsw"]) == []
+
+
+# rare terms (df 1 in 1000 docs): a,b always together; a,c never together.
+_RARE_PMI_INDEX = CorpusIndex(
+    document_frequencies={"a": 1, "b": 1, "c": 1},
+    n_docs=1000,
+    avgdl=3.0,
+    pair_document_frequencies={frozenset(("a", "b")): 1},
+)
+
+
+def test_pmi_rare_never_together_is_maximally_negative() -> None:
+    # regression: a 0.5-doc smoothing floor made rare unseen pairs read POSITIVE
+    stats = {s.name: s.value for s in PMIBank(_RARE_PMI_INDEX).compute(["a", "c"])}
+    assert stats["min_pmi"] == pytest.approx(-1.0)
+
+
+def test_pmi_rare_always_together_is_maximally_positive() -> None:
+    stats = {s.name: s.value for s in PMIBank(_RARE_PMI_INDEX).compute(["a", "b"])}
+    assert stats["min_pmi"] == pytest.approx(1.0)
+
+
+def test_pmi_clamps_impossible_producer_counts() -> None:
+    # a producer claiming more co-occurrences than either term's df must not
+    # push NPMI past 1.0; the min(pair, df_a, df_b) clamp holds the bound
+    bad = CorpusIndex(
+        document_frequencies={"a": 1, "b": 1},
+        n_docs=10,
+        avgdl=3.0,
+        pair_document_frequencies={frozenset(("a", "b")): 5},
+    )
+    stats = {s.name: s.value for s in PMIBank(bad).compute(["a", "b"])}
+    assert stats["min_pmi"] == pytest.approx(1.0)
+
+
+def test_corpus_relative_extractor_runs_the_group() -> None:
+    extractor = CorpusRelativeExtractor(_RARE_PMI_INDEX)
+    stats = {stat.name: stat.value for stat in extractor.resolve(["a", "b"])}
+    # binds every bank in the group, including PMI, against the one index
+    assert "avg_idf" in stats and "vocab_overlap" in stats
+    assert "mean_pmi" in stats and "min_pmi" in stats
+
+
+def test_corpus_relative_extractor_accepts_a_bank_subset() -> None:
+    extractor = CorpusRelativeExtractor(_RARE_PMI_INDEX, banks=(PMIBank,))
+    stats = {stat.name: stat.value for stat in extractor.resolve(["a", "b"])}
+    assert set(stats) == {"mean_pmi", "min_pmi"}

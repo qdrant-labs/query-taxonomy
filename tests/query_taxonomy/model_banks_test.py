@@ -88,3 +88,130 @@ class TestSpacyBanks:
             for s in CoordinationBank().compute("quantum computing paper")
         }
         assert stats == {"widest_list_size": 0.0}
+
+
+@pytest.fixture(scope="module")
+def rarity_bank():
+    pytest.importorskip("wordfreq")
+    from query_taxonomy.metrics.frequency import RarityBank
+
+    return RarityBank()
+
+
+class TestRarityBank:
+    def test_rare_query_is_rarer_than_common_query(self, rarity_bank):
+        common = {
+            s.name: s.value for s in rarity_bank.compute("what is the best day")
+        }
+        rare = {
+            s.name: s.value
+            for s in rarity_bank.compute("myocardial infarction pathophysiology")
+        }
+        assert common["mean_zipf"] > 4.0  # common words are frequent
+        assert rare["mean_zipf"] < common["mean_zipf"]
+        assert rare["rare_share"] > common["rare_share"]
+
+    def test_empty_text_emits_nothing(self, rarity_bank):
+        assert rarity_bank.compute("") == []
+
+    def test_all_oov_emits_nothing(self, rarity_bank):
+        # no in-vocabulary token -> rarity undefined, not a maximally-rare 0.0
+        assert rarity_bank.compute("zzqxk wvbxzq") == []
+
+
+@pytest.fixture(scope="module")
+def fragmentation_bank():
+    pytest.importorskip("tokenizers")
+    from query_taxonomy.metrics.fragmentation import FragmentationBank, _tokenizer
+
+    try:
+        _tokenizer()  # from_pretrained fetches the vocab on first use
+    except Exception as exc:  # offline / hub unreachable
+        pytest.skip(f"tokenizer unavailable: {exc}")
+    return FragmentationBank()
+
+
+class TestFragmentationBank:
+    def test_technical_word_shatters_more_than_common_words(
+        self, fragmentation_bank
+    ):
+        clean = {
+            s.name: s.value
+            for s in fragmentation_bank.compute("what is the best day")
+        }
+        technical = {
+            s.name: s.value
+            for s in fragmentation_bank.compute("phosphorylation dysregulation")
+        }
+        assert clean["mean_pieces_per_word"] == pytest.approx(1.0)
+        assert technical["max_pieces_per_word"] > 1.0
+        assert (
+            technical["mean_pieces_per_word"] > clean["mean_pieces_per_word"]
+        )
+
+    def test_punctuation_and_hyphens_do_not_inflate(self, fragmentation_bank):
+        # regression: text.split() made "learning?" / "state-of-the-art" read
+        # as one badly-shattered token; word_ids grouping keeps each clean.
+        question = {
+            s.name: s.value
+            for s in fragmentation_bank.compute("what is machine learning?")
+        }
+        hyphenated = {
+            s.name: s.value
+            for s in fragmentation_bank.compute("a state-of-the-art tool")
+        }
+        assert question["max_pieces_per_word"] == pytest.approx(1.0)
+        assert hyphenated["max_pieces_per_word"] == pytest.approx(1.0)
+
+    def test_empty_text_emits_nothing(self, fragmentation_bank):
+        assert fragmentation_bank.compute("") == []
+
+
+@pytest.fixture(scope="module")
+def unknown_rate_bank():
+    pytest.importorskip("wordfreq")
+    from query_taxonomy.corruption import UnknownTokenRateBank
+
+    return UnknownTokenRateBank()
+
+
+class TestUnknownTokenRateBank:
+    def test_share_of_absent_words(self, unknown_rate_bank):
+        stats = {
+            s.name: s.value
+            for s in unknown_rate_bank.compute("the zxqwvk machine")
+        }
+        assert stats["unknown_token_rate"] == pytest.approx(1 / 3)
+
+    def test_word_shape_guard_excludes_identifiers(self, unknown_rate_bank):
+        # digits/identifiers are not word-shaped -> not counted as unknown
+        stats = {
+            s.name: s.value
+            for s in unknown_rate_bank.compute("error 0x80070005 code")
+        }
+        assert stats["unknown_token_rate"] == 0.0
+
+    def test_no_word_shaped_tokens_emits_nothing(self, unknown_rate_bank):
+        assert unknown_rate_bank.compute("123 456") == []
+
+
+@pytest.fixture(scope="module")
+def typo_bank():
+    pytest.importorskip("wordfreq")
+    from query_taxonomy.corruption import TypoBank
+
+    return TypoBank()
+
+
+class TestTypoBank:
+    def test_flags_keyword_adjacent_typo(self, typo_bank):
+        spans = typo_bank.compute("how to confgure the server")
+        assert [s.text for s in spans] == ["confgure"]  # -> configure
+
+    def test_ignores_rare_real_words_and_names(self, typo_bank):
+        # a name absent from the table but not one edit from a frequent word
+        assert typo_bank.compute("deploy Qdrant now") == []
+
+    def test_ignores_short_tokens(self, typo_bank):
+        # a single OOV letter is one edit from 'a'/'i' but too short to judge
+        assert typo_bank.compute("q z x") == []
