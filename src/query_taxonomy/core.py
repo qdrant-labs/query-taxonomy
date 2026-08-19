@@ -18,6 +18,7 @@ class Engine(StrEnum):
     SPACY = "spacy_model"
     WORDFREQ = "wordfreq"
     TOKENIZER = "tokenizer"
+    LANGID = "langid_model"
 
 
 class FeatureSpan(NamedTuple):
@@ -31,6 +32,17 @@ class FeatureStat(NamedTuple):
     value: float
 
 
+class LanguageSpan(NamedTuple):
+    """A contiguous single-language region of a query, `language` a BCP-47
+    code. The Semantical group's output shape: language_set / code_switching
+    are derived views over a query's spans, not separate banks."""
+
+    text: str
+    start: int
+    end: int
+    language: str
+
+
 class AmbiguityTier(IntEnum):
     """Pattern precision tier: lower value = higher claim priority during
     within-group span resolution."""
@@ -41,7 +53,7 @@ class AmbiguityTier(IntEnum):
 
 
 EngineT = TypeVar("EngineT")
-OutT = TypeVar("OutT", FeatureSpan, FeatureStat)
+OutT = TypeVar("OutT", FeatureSpan, FeatureStat, LanguageSpan)
 
 
 class GeneralBank(ABC, Generic[OutT, EngineT]):

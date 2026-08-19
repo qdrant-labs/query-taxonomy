@@ -232,3 +232,68 @@ class TestTypoBank:
         # word (pthread->thread) is indistinguishable from a slip within-group,
         # so it stays flagged. Read the lane rate, not the per-span claim.
         assert typo_bank.compute("pthread colcon stdio")
+
+
+@pytest.fixture(scope="module")
+def segmentation_bank():
+    pytest.importorskip("lingua")
+    from query_taxonomy.semantical import SegmentationBank
+
+    return SegmentationBank()
+
+
+class TestSegmentationBank:
+    def test_monolingual_english_single_span(self, segmentation_bank):
+        assert [s.language for s in segmentation_bank.compute("best vector database")] == ["en"]
+
+    def test_detects_nonlatin_code_switch(self, segmentation_bank):
+        langs = {
+            s.language
+            for s in segmentation_bank.compute(
+                "привет мир today I deploy a vector database on my server"
+            )
+        }
+        assert "ru" in langs and "en" in langs
+
+    def test_letterless_query_defaults_english(self, segmentation_bank):
+        # numbers/identifiers are not language; lingua would hallucinate one
+        assert [s.language for s in segmentation_bank.compute("12345 0x1f")] == ["en"]
+
+    def test_empty_emits_nothing(self, segmentation_bank):
+        assert segmentation_bank.compute("") == []
+
+    def test_code_heavy_english_not_a_false_switch(self, segmentation_bank):
+        # regression: en<->Latin confusion sprayed it/fr/de over English lanes
+        # (measured 9-98%); the en + non-Latin default keeps this English
+        assert [s.language for s in segmentation_bank.compute("0x80070005 error code")] == ["en"]
+
+
+@pytest.fixture(scope="module")
+def langid_extractor():
+    pytest.importorskip("lingua")
+    from query_taxonomy.core import Engine
+    from query_taxonomy.features import FeatureExtractor
+
+    return FeatureExtractor(engines=[Engine.LANGID])
+
+
+class TestSemanticalDerivedViews:
+    def _resolve(self, extractor, text):
+        from query_taxonomy.taxonomy import FeatureGroup
+
+        return extractor.resolve(text, groups=[FeatureGroup.SEMANTICAL])
+
+    def test_english_not_code_switched(self, langid_extractor):
+        f = self._resolve(langid_extractor, "best vector database")
+        assert f.language_set == ["en"]
+        assert f.language_count == 1
+        assert f.is_code_switched is False
+
+    def test_mixed_is_code_switched(self, langid_extractor):
+        f = self._resolve(
+            langid_extractor,
+            "привет мир today I deploy a vector database on my server",
+        )
+        assert "ru" in f.language_set and "en" in f.language_set
+        assert f.language_count >= 2
+        assert f.is_code_switched is True

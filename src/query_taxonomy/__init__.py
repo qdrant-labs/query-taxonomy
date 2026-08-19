@@ -14,6 +14,7 @@ from query_taxonomy.metrics.pos import (
     NaturalLanguageSignalBank,
     SyntacticDepthBank,
 )
+from query_taxonomy.semantical import SEMANTICAL_BANKS
 from query_taxonomy.taxonomy import FeatureGroup
 
 
@@ -53,6 +54,7 @@ FEATURE_BANKS = {
         FragmentationBank,
     ),
     FeatureGroup.CORRUPTION: CORRUPTION_BANKS,
+    FeatureGroup.SEMANTICAL: SEMANTICAL_BANKS,
 }
 
 __all__ = ["FEATURE_BANKS", "Bank", "BankSpec", "BankTypes", "Engine", "split_bank"]

@@ -5,7 +5,7 @@ from functools import cached_property
 from pydantic import BaseModel, ConfigDict, computed_field
 
 from query_taxonomy import FEATURE_BANKS, Bank, BankSpec, split_bank
-from query_taxonomy.core import Engine, FeatureSpan, FeatureStat
+from query_taxonomy.core import Engine, FeatureSpan, FeatureStat, LanguageSpan
 from query_taxonomy.taxonomy import FeatureGroup
 
 
@@ -86,6 +86,9 @@ class QueryFeatures(BaseModel):
 
     spans: dict[FeatureGroup, dict[str, list[FeatureSpan]]]
     stats: dict[FeatureGroup, dict[str, list[FeatureStat]]]
+    # Semantical group: language-labeled spans. language_set / code_switching
+    # are derived views below, not banks.
+    segments: dict[FeatureGroup, dict[str, list[LanguageSpan]]] = {}
 
     @computed_field
     @property
@@ -94,6 +97,32 @@ class QueryFeatures(BaseModel):
             group: {type_: len(matches) for type_, matches in types.items()}
             for group, types in self.spans.items()
         }
+
+    @property
+    def _language_spans(self) -> list[LanguageSpan]:
+        return [
+            span
+            for types in self.segments.get(FeatureGroup.SEMANTICAL, {}).values()
+            for span in types
+        ]
+
+    @computed_field
+    @property
+    def language_set(self) -> list[str]:
+        """Derived view: distinct languages across the segmentation, in order."""
+        return list(dict.fromkeys(s.language for s in self._language_spans))
+
+    @computed_field
+    @property
+    def language_count(self) -> int:
+        """Derived view: number of distinct languages present."""
+        return len(self.language_set)
+
+    @computed_field
+    @property
+    def is_code_switched(self) -> bool:
+        """Derived view: two or more languages present (mechanical only)."""
+        return self.language_count >= 2
 
 
 class CorpusFeatures(BaseModel):
@@ -171,12 +200,16 @@ class FeatureExtractor:
         """Claim-resolved outputs for one text, sectioned by group."""
         spans: dict[FeatureGroup, dict[str, list[FeatureSpan]]] = {}
         stats: dict[FeatureGroup, dict[str, list[FeatureStat]]] = {}
+        segments: dict[FeatureGroup, dict[str, list[LanguageSpan]]] = {}
         for group in self._selected(groups):
             registry: list[FeatureSpan] = []
             for bank in self._by_group[group]:
                 name = str(bank.name)
                 for out in bank.compute(text):
-                    if isinstance(out, FeatureSpan):
+                    if isinstance(out, LanguageSpan):
+                        # a partition of the text, not sparse claims — no registry
+                        segments.setdefault(group, {}).setdefault(name, []).append(out)
+                    elif isinstance(out, FeatureSpan):
                         if any(
                             out.start < c.end and c.start < out.end
                             for c in registry
@@ -186,7 +219,9 @@ class FeatureExtractor:
                         spans.setdefault(group, {}).setdefault(name, []).append(out)
                     else:
                         stats.setdefault(group, {}).setdefault(name, []).append(out)
-        return QueryFeatures(query_text=text, spans=spans, stats=stats)
+        return QueryFeatures(
+            query_text=text, spans=spans, stats=stats, segments=segments
+        )
 
     def extract(
         self,

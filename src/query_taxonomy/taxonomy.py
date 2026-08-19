@@ -557,23 +557,27 @@ class QueryCorpusFeature(StrEnum):
 
 class SemanticFeature(StrEnum):
     """
-    Semantical group: features that capture meaning-affecting register and
-    cross-lingual properties. Method: MODEL (lang-id engine, pending library
-    decision — see SPEC decision 18). Output: stat banks (named scalars).
+    Semantical group: cross-lingual properties. Method: LANGID (lingua, SPEC
+    d18 / docs/adr/0002). One span-emitting bank detects LANGUAGE_SEGMENTATION;
+    LANGUAGE_SET and CODE_SWITCHING are derived views over its LanguageSpans,
+    not separate banks.
     """
 
+    LANGUAGE_SEGMENTATION = "language_segmentation"
+    """The bank's output: contiguous single-language spans over the query
+    (LanguageSpan, BCP-47 code each), from lingua's detect_multiple_languages.
+    Reliable when each language holds a real run; a lone embedded foreign word
+    in a short query is not segmented (SPEC M2). A letterless query (numbers,
+    identifiers) and a low-confidence short query default to one 'en' span."""
+
     LANGUAGE_SET = "language_set"
-    """The set of languages detected in the query — one FeatureStat per BCP-47
-    code present (detected_en, detected_de, ...) plus language_count. A query
-    may carry multiple languages simultaneously (code-switching); this is
-    multi-label, not single-class."""
+    """Derived view: the distinct languages across the segmentation, plus
+    language_count. Multi-label — a query may carry several languages."""
 
     CODE_SWITCHING = "code_switching"
-    """Whether the query mixes two or more languages as a natural, culturally
-    embedded whole (e.g. Moldavian Romanian with Russian jargon, Egyptian Arabic
-    with English class-marker terms). Stat: is_code_switched (0.0/1.0),
-    language_count. Not segmentable — the mixing is the register, not a
-    sequence of monolingual spans."""
+    """Derived view: is_code_switched = language_count >= 2. The mechanical
+    signal only — the "natural, culturally embedded" nuance (Moldavian Romanian
+    with Russian jargon) is not detectable and is out of scope (SPEC M2)."""
 
 
 RELEVANCE_CHANGING: frozenset[str] = frozenset({
