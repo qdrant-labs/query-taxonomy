@@ -40,6 +40,29 @@ corpus = extractor.extract(queries=[...])
 print(corpus.summary())   # group-sectioned FP smell-test view
 ```
 
+## Demo
+
+Type a query, watch every bank claim its spans — overlapping groups stack
+their underlines, stats and language update per keystroke.
+
+```bash
+poetry run python demo/server.py    # http://localhost:8000 (PORT= to change)
+```
+
+Stdlib HTTP over the real `FeatureExtractor` — every engine, no build step.
+
+**Static deploy.** The same page runs with no server at all: `banks.json`
+carries the 92 regex banks' compiled patterns and the browser runs the claim
+loop itself. spaCy and wordfreq banks (POS stats, term rarity, typo, language
+segmentation) need the server and say so in the UI.
+
+```bash
+poetry run python demo/export.py   # refresh banks.json after changing a bank
+cd demo && vercel                  # static, no build command, no framework
+```
+
+`tests/test_demo_export.py` fails if `banks.json` lags the banks.
+
 ## Layout
 
 ```
