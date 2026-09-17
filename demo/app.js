@@ -1,10 +1,5 @@
-// The browser half of the demo. Spans come from banks.json — the patterns the
-// Python banks compiled — so the only logic restated here is the claim loop
-// FeatureExtractor.resolve runs: tier order, first claim wins, per group.
-//
-// ponytail: JS `\b` and `\w` are ASCII where Python's are Unicode, so a
-// boundary between an identifier and a non-Latin letter can differ. Run the
-// local server for the exact semantics.
+// The browser half of the demo: input, span layout, panels. No taxonomy logic
+// lives here — api/resolve.py resolves, this draws.
 
 const GROUPS = ["structured_identifiers", "sentence_markers", "logical_structures", "corruption", "semantical"];
 const LABEL = {
@@ -27,71 +22,12 @@ const box = $("in");
 
 /* ---------------------------------------------------------------- engine */
 
-let LOCAL = null;   // {groups: [[group, banks]], tokens: RegExp, stop: Set}
-
-async function loadBanks() {
-  const spec = await (await fetch("banks.json")).json();
-  const compiled = spec.banks.map(b => ({ ...b, re: new RegExp(b.pattern, b.flags) }));
-  LOCAL = {
-    // stable sort inside a group: registration order breaks ties within a tier
-    groups: GROUPS.map(g => [g, compiled.filter(b => b.group === g).sort((a, b) => a.tier - b.tier)])
-                  .filter(([, banks]) => banks.length),
-    tokens: new RegExp(spec.tokens, "gu"),
-    stop: new Set(spec.stopwords),
-    count: compiled.length,
-  };
-}
-
-function localResolve(text) {
-  const spans = {}, tfs = {};
-  for (const [group, banks] of LOCAL.groups) {
-    const claimed = [];
-    for (const bank of banks) {
-      for (const m of text.matchAll(bank.re)) {
-        const start = m.index, end = start + m[0].length;
-        if (end === start) continue;
-        if (claimed.some(c => start < c.end && c.start < end)) continue;
-        claimed.push({ start, end });
-        ((spans[group] ||= {})[bank.name] ||= []).push([m[0], start, end]);
-      }
-    }
-  }
-  for (const [group, types] of Object.entries(spans))
-    tfs[group] = Object.fromEntries(Object.entries(types).map(([t, s]) => [t, s.length]));
-
-  const tokens = [...text.matchAll(LOCAL.tokens)].map(m => m[0]);
-  const stop = tokens.filter(t => LOCAL.stop.has(t.toLowerCase())).length;
-  return {
-    spans, tfs, segments: {},
-    stats: {
-      statistical_metrics: {
-        length: [["length_words", tokens.length], ["length_chars", text.length]],
-        stopword_ratio: [["stopword_ratio", tokens.length ? stop / tokens.length : 0]],
-      },
-    },
-  };
-}
-
-// The local server answers POST with every engine; a static host does not.
-async function serverResolve(text) {
-  const res = await fetch("/", { method: "POST", body: JSON.stringify({ text }) });
-  const data = await res.json();
-  if (!data.spans) throw new Error("not the demo server");
-  return data;
-}
-
-let resolve = null;
-
-async function pickEngine() {
-  await loadBanks();
-  try {
-    await serverResolve("probe v1.0");
-    resolve = serverResolve;
-    $("mode").textContent = "all engines · local server";
-  } catch {
-    resolve = async text => localResolve(text);
-    $("mode").textContent = `regex only · ${LOCAL.count} banks in the browser`;
-  }
+// Every span and stat comes from the Python function in api/resolve.py — the
+// real banks, one implementation. This file only draws them.
+async function resolve(text) {
+  const res = await fetch("/api/resolve", { method: "POST", body: JSON.stringify({ text }) });
+  if (!res.ok) throw new Error(`resolve: ${res.status}`);
+  return res.json();
 }
 
 /* ---------------------------------------------------------------- render */
@@ -179,7 +115,7 @@ function tallies(data) {
 
 function languages(data) {
   const segs = languageSegments(data);
-  if (!segs.length) { $("langs").innerHTML = '<p class="empty">Needs the wordfreq engine — run the local server.</p>'; return; }
+  if (!segs.length) { $("langs").innerHTML = '<p class="empty">Not measured.</p>'; return; }
   const carrier = carrierOf(segs);
   const by = {};
   for (const s of segs) (by[s.language] ||= []).push(s.text.trim());
@@ -207,8 +143,15 @@ let seq = 0;
 async function run() {
   const text = box.value;
   const mine = ++seq;
-  const data = await resolve(text);
+  let data;
+  try {
+    data = await resolve(text);
+  } catch (err) {
+    $("warn").textContent = " · " + err.message;
+    return;
+  }
   if (mine !== seq) return;  // a later keystroke already answered
+  $("mode").textContent = (data.engines || []).join(" · ");
   $("warn").textContent = data.warning ? " · " + data.warning : "";
   render(text, collect(data));
   tallies(data);
@@ -219,4 +162,4 @@ async function run() {
 let timer;
 box.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 60); };
 box.value = SAMPLES[0];
-pickEngine().then(run);
+run();

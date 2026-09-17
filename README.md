@@ -49,19 +49,23 @@ their underlines, stats and language update per keystroke.
 poetry run python demo/server.py    # http://localhost:8000 (PORT= to change)
 ```
 
-Stdlib HTTP over the real `FeatureExtractor` — every engine, no build step.
+`api/resolve.py` holds the whole server: a `BaseHTTPRequestHandler` over the
+real `FeatureExtractor`. `demo/server.py` subclasses it and adds the static
+files, so local and deployed run one code path and the page can never drift
+from the banks.
 
-**Static deploy.** The same page runs with no server at all: `banks.json`
-carries the 92 regex banks' compiled patterns and the browser runs the claim
-loop itself. spaCy and wordfreq banks (POS stats, term rarity, typo, language
-segmentation) need the server and say so in the UI.
+**Deploy (Vercel).** `demo/` is the static root, `api/resolve.py` the Python
+function — no build step, no framework.
 
 ```bash
-poetry run python demo/export.py   # refresh banks.json after changing a bank
-cd demo && vercel                  # static, no build command, no framework
+vercel
 ```
 
-`tests/test_demo_export.py` fails if `banks.json` lags the banks.
+The function runs regex + wordfreq + langid: 77 MB of dependencies, well
+inside the size limit, ~0.3 s cold, ~4 ms warm. spaCy stats (POS, morphology,
+nesting depth, coordination) and subword fragmentation need a downloaded
+model, so they only appear locally — `TAXONOMY_ALL_ENGINES` turns them on and
+the header lists whichever engines answered.
 
 ## Layout
 

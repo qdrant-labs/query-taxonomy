@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "demo",
+  "functions": {
+    "api/resolve.py": { "includeFiles": "src/query_taxonomy/**" }
+  }
+}

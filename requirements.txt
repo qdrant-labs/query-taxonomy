@@ -1,0 +1,6 @@
+# The function's dependency set. `query_taxonomy` itself is pure Python and
+# ships via vercel.json includeFiles, so installing the package — and with it
+# spaCy and tokenizers — is neither needed nor affordable inside a function.
+edify>=0.3.0,<0.4.0
+pydantic>=2.13.4,<3.0.0
+wordfreq>=3.1.1,<4.0.0
